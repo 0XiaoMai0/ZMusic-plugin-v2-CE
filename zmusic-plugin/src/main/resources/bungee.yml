@@ -1,0 +1,5 @@
+name: ZMusic
+main: me.zhenxin.zmusic.ZMusicBC
+version: ${version}
+author: ZhenXin
+description: A Minecraft music plugin supporting Bukkit, BungeeCord, and Velocity
