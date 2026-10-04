@@ -1,0 +1,28 @@
+[
+  {
+    "keyword": "晴天",
+    "searchCount": 10,
+    "id": "51685512",
+    "beforeMessage": "The request is illegal!",
+    "afterCode": 200,
+    "afterMessage": "success",
+    "title": "晴天 (KTV版伴奏)",
+    "error": "",
+    "playable": true,
+    "lyricCharacters": 1262,
+    "audio": "OK:MP3"
+  },
+  {
+    "keyword": "宝宝巴士",
+    "searchCount": 10,
+    "id": "364464507",
+    "beforeMessage": "The request is illegal!",
+    "afterCode": 200,
+    "afterMessage": "success",
+    "title": "第01集 遵守交规-追捕摩托车飞贼 -1",
+    "error": "",
+    "playable": true,
+    "lyricCharacters": 1090,
+    "audio": "OK:MP3"
+  }
+]

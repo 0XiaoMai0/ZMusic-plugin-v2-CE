@@ -1,6 +1,5 @@
 package me.zhenxin.zmusic.utils;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import me.zhenxin.zmusic.ZMusic;
 import me.zhenxin.zmusic.api.MultiMap;
@@ -38,64 +37,30 @@ public class OtherUtils {
     }
 
     public static void resetPlayerStatus(Object player) {
-        ZMusic.music.stop(player);
-        if (Config.supportBossBar) {
-            BossBar bossBar = PlayerData.getPlayerBoosBar(player);
-            if (bossBar != null) {
-                bossBar.removePlayer(player);
-            }
-        }
-        if (Config.supportTitle) {
-            ZMusic.message.sendTitleMessage("", "", player);
-        }
-        if (Config.supportHud) {
-            ZMusic.send.sendAM(player, "[Lyric]");
-            ZMusic.send.sendAM(player, "[Info]");
-        }
-        PlayerData.setPlayerPlayStatus(player, false);
-        PlayerData.setPlayerMusicName(player, null);
-        PlayerData.setPlayerMusicSinger(player, null);
-        PlayerData.setPlayerCurrentTime(player, null);
-        PlayerData.setPlayerMaxTime(player, null);
-        PlayerData.setPlayerLyric(player, null);
-        PlayerData.setPlayerPlatform(player, null);
-        PlayerData.setPlayerPlaySource(player, null);
-    }
-
-    public static void checkUpdate(Object sender, boolean aSync) {
-        if (!Config.checkUpdate) {
-            return;
-        }
-
-        Runnable r = () -> {
-            ZMusic.message.sendNormalMessage("正在检查更新...", sender);
-            String jsonText = NetUtils.getNetString("https://api.zhenxin.me/zmusic/version?type=legacy", null);
-            if (jsonText != null) {
-                Gson gson = new Gson();
-                JsonObject json = gson.fromJson(jsonText, JsonObject.class);
-                String latestVer = json.get("latestVer").getAsString();
-                int latestVerCode = json.get("latestVerCode").getAsInt();
-                String updateLog = json.get("updateLog").getAsString();
-                String downloadUrl = json.get("downloadUrl").getAsString();
-                if (ZMusic.thisVerCode < latestVerCode) {
-                    ZMusic.message.sendNormalMessage("发现新版本 V" + latestVer, sender);
-                    ZMusic.message.sendNormalMessage("更新日志:", sender);
-                    String[] log = updateLog.split("\\n");
-                    for (String s : log) {
-                        ZMusic.message.sendNormalMessage(s, sender);
-                    }
-                    ZMusic.message.sendNormalMessage("下载地址: " + downloadUrl, sender);
-                } else {
-                    ZMusic.message.sendNormalMessage("已是最新版本!", sender);
+        synchronized (player) {
+            ZMusic.music.stop(player);
+            if (Config.supportBossBar) {
+                BossBar bossBar = PlayerData.getPlayerBoosBar(player);
+                if (bossBar != null) {
+                    bossBar.removePlayer(player);
                 }
-            } else {
-                ZMusic.message.sendErrorMessage("检查更新失败!", sender);
             }
-        };
-        if (aSync) {
-            ZMusic.runTask.runAsync(r);
-        } else
-            r.run();
+            if (Config.supportTitle) {
+                ZMusic.message.sendTitleMessage("", "", player);
+            }
+            if (Config.supportHud) {
+                ZMusic.send.sendAM(player, "[Lyric]");
+                ZMusic.send.sendAM(player, "[Info]");
+            }
+            PlayerData.setPlayerPlayStatus(player, false);
+            PlayerData.setPlayerMusicName(player, null);
+            PlayerData.setPlayerMusicSinger(player, null);
+            PlayerData.setPlayerCurrentTime(player, null);
+            PlayerData.setPlayerMaxTime(player, null);
+            PlayerData.setPlayerLyric(player, null);
+            PlayerData.setPlayerPlatform(player, null);
+            PlayerData.setPlayerPlaySource(player, null);
+        }
     }
 
     /**
@@ -151,68 +116,7 @@ public class OtherUtils {
     }
 
     private static Map<Long, String> formatLyric(String lyric) {
-        Map<Long, String> map = new HashMap<>();
-        MultiMap<Long, String> multiMap = new MultiMap<>();
-        if (lyric.isEmpty()) {
-            return map;
-        }
-        String[] lyrics = lyric.split("\n");
-        String regex = "\\[(\\d{1,2}):(\\d{1,2}).(\\d{1,3})\\]";
-        Pattern pattern = Pattern.compile(regex);
-        for (String lrc : lyrics) {
-            Matcher matcher = pattern.matcher(lrc);
-            while (matcher.find()) {
-                String min = matcher.group(1);
-                String sec = matcher.group(2);
-                String mill = matcher.group(3);
-                if (mill.length() > 2) {
-                    switch (mill.length()) {
-                        case 2:
-                            mill = String.valueOf(Integer.parseInt(mill));
-                            break;
-                        case 3:
-                            mill = mill.substring(0, mill.length() - 1);
-                            mill = String.valueOf(Integer.parseInt(mill));
-                            break;
-                    }
-                }
-                long time = timeToSec(min, sec, mill);
-                String text = lrc.substring(matcher.end());
-                text = text.replaceAll("\\[(\\d{1,2}):(\\d{1,2}).(\\d{1,3})\\]", "");
-                multiMap.put(time, text);
-            }
-        }
-        for (int i = 0; i < multiMap.getSize(); i++) {
-            Map<Long, List<String>> lrcs = multiMap.get(i);
-            for (Map.Entry<Long, List<String>> e : lrcs.entrySet()) {
-                List<String> eValue = e.getValue();
-                StringBuilder sb = new StringBuilder();
-                for (String s : eValue) {
-                    sb.append(s).append("\n");
-                }
-                String s = sb.substring(0, sb.length() - 1);
-                map.put(e.getKey(), s);
-            }
-        }
-        return map;
-    }
-
-    /**
-     * 将分,秒,毫秒转为毫秒
-     *
-     * @param min  分
-     * @param sec  秒
-     * @param mill 毫秒
-     * @return 毫秒
-     */
-    private static long timeToSec(String min, String sec, String mill) {
-        int m = Integer.parseInt(min);
-        int s = Integer.parseInt(sec);
-        int ms = Integer.parseInt(mill);
-        if (s >= 60) {
-            ZMusic.log.sendErrorMessage("警告: 出现了一个时间不正确的项 --> [" + min + ":" + sec + "." + mill.substring(0, 2) + "]");
-        }
-        return (m * 60 * 1000 + s * 1000 + ms) / 1000;
+        return me.zhenxin.zmusic.music.LyricParser.parseSeconds(lyric);
     }
 
     public static String getMD5String(String str) {
@@ -330,7 +234,7 @@ public class OtherUtils {
 
     public static void sendAdv(Object player, String title) {
         if (Config.realSupportAdvancement) {
-            if (ZMusic.isBC) {
+            if (ZMusic.isBC || ZMusic.isVelocity) {
                 JsonObject json = new JsonObject();
                 json.addProperty("isAdv", true);
                 json.addProperty("title", title);

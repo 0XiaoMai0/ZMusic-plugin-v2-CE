@@ -2,20 +2,12 @@ plugins {
     alias(libs.plugins.shadow)
 }
 
-version = '2.12.0'
+version = '2.14.0-CE.6'
 
 dependencies {
-    compileOnly 'ink.ptms:nms-all:1.0.0'
-
-    implementation(project(":zmusic-nms:zmusic-nms-core"))
-    implementation(project(":zmusic-nms:zmusic-nms-legacy"))
-    implementation(project(":zmusic-nms:zmusic-nms-1.17"))
-    implementation(project(":zmusic-nms:zmusic-nms-1.18"))
-    implementation(project(":zmusic-nms:zmusic-nms-1.19"))
-    implementation(project(":zmusic-nms:zmusic-nms-1.20"))
-    implementation(project(":zmusic-nms:zmusic-nms-1.21.4"))
-    implementation(project(":zmusic-nms:zmusic-nms-1.21.7"))
-    implementation(project(":zmusic-nms:zmusic-nms-1.21.11"))
+    implementation 'com.google.code.gson:gson:2.11.0'
+    implementation 'com.tianscar.javasound:jaad:0.9.4'
+    implementation 'de.sciss:jump3r:1.0.5'
 
     compileOnly libs.bungeecord
     compileOnly libs.velocity
@@ -26,6 +18,24 @@ dependencies {
 
     compileOnly libs.placeholderapi
     compileOnly libs.vault
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testImplementation libs.placeholderapi
+    testImplementation libs.spigot
+    testRuntimeOnly 'com.google.code.gson:gson:2.11.0'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+    systemProperty 'zmusic.liveTests', System.getProperty('zmusic.liveTests', 'false')
+}
+
+shadowJar {
+    archiveFileName = 'ZMusic-CE-2.14.0.jar'
+    relocate 'com.google.gson', 'me.zhenxin.zmusic.libs.gson'
+    relocate 'net.sourceforge.jaad', 'me.zhenxin.zmusic.libs.jaad'
+    relocate 'de.sciss.jump3r', 'me.zhenxin.zmusic.libs.jump3r'
 }
 
 build {

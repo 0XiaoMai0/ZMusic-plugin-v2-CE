@@ -2,16 +2,4 @@ rootProject.name = 'ZMusic'
 include('zmusic-plugin')
 include('zmusic-addon')
 
-// NMS
-include(
-        "zmusic-nms",
-        "zmusic-nms:zmusic-nms-core",
-        "zmusic-nms:zmusic-nms-legacy",
-        "zmusic-nms:zmusic-nms-1.17",
-        "zmusic-nms:zmusic-nms-1.18",
-        "zmusic-nms:zmusic-nms-1.19",
-        "zmusic-nms:zmusic-nms-1.20",
-        "zmusic-nms:zmusic-nms-1.21.4",
-        "zmusic-nms:zmusic-nms-1.21.7",
-        "zmusic-nms:zmusic-nms-1.21.11"
-)
+// CE 使用公开 API 和隔离的旧版兼容适配，不构建逐版本 NMS。

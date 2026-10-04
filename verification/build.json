@@ -1,0 +1,16 @@
+{
+  "version": "2.14.0-CE.2",
+  "officialTag": "2.14.0",
+  "officialCommit": "174b50ab5253469b9cd41584994ec67b1b8cbea5",
+  "classMajorCounts": {
+    "50": 119,
+    "51": 223,
+    "52": 483
+  },
+  "nativeFiles": [],
+  "jarBytes": 1650280,
+  "sha256": "1CA1627A58B4980998B3B3CC4F79F3CEFB7993C1161989AC69AFFCFF9AC640DE",
+  "offlineTests": 28,
+  "liveTests": 1,
+  "testFailures": 0
+}

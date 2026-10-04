@@ -1,0 +1,41 @@
+# Created by .ignore support plugin (hsz.mobi)
+### Gradle template
+.gradle
+**/build/
+!src/**/build/
+
+# Ignore Gradle GUI config
+gradle-app.setting
+
+# Avoid ignoring Gradle wrapper jar file (.jar files are usually ignored)
+!gradle-wrapper.jar
+
+# Cache of project
+.gradletasknamecache
+
+# # Work around https://youtrack.jetbrains.com/issue/IDEA-116898
+# gradle/wrapper/gradle-wrapper.properties
+
+local.properties
+
+.idea
+*.iml
+
+# disabled files
+*.del
+
+# VS Code
+.vscode/
+
+# Android Studio
+.idea/
+bin/
+node_modules/
+*.log
+*.patch
+scripts/*-result.json
+*.class
+**/cookies.txt
+**/*-cookies.txt
+.claude/
+verification/history-ce1/

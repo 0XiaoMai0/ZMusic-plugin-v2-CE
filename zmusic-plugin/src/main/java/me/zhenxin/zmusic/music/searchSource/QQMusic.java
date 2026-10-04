@@ -7,6 +7,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import me.zhenxin.zmusic.utils.ServiceCookieUtils;
 import me.zhenxin.zmusic.utils.WebMusicUtils;
+import me.zhenxin.zmusic.language.MusicErrorMessages;
+import me.zhenxin.zmusic.login.QQAccount;
 
 import java.net.URLEncoder;
 import java.util.Random;
@@ -24,7 +26,8 @@ public class QQMusic {
         try {
             JsonObject selected;
             if (musicName.contains("-id:")) {
-                selected = getSongDetail(parseSongMid(musicName.substring(musicName.indexOf("-id:") + 4).trim()));
+                selected = SongMetadataCache.get("qq", musicName.substring(musicName.indexOf("-id:") + 4).trim());
+                if (selected == null) selected = getSongDetail(parseSongMid(musicName.substring(musicName.indexOf("-id:") + 4).trim()));
                 if (selected == null) {
                     selected = new JsonObject();
                     String id = musicName.substring(musicName.indexOf("-id:") + 4).trim();
@@ -32,7 +35,7 @@ public class QQMusic {
                     selected.addProperty("songMid", parseSongMid(id));
                     selected.addProperty("mediaMid", parseMediaMid(id));
                     selected.addProperty("name", parseSongMid(id));
-                    selected.addProperty("singer", "QQ Music");
+                    selected.addProperty("singer", "QQ音乐");
                     selected.addProperty("time", 0);
                 }
                 String mediaMid = parseMediaMid(musicName.substring(musicName.indexOf("-id:") + 4).trim());
@@ -56,15 +59,16 @@ public class QQMusic {
 
             String musicUrl = getPlayUrl(songMid, mediaMid);
             if (musicUrl == null || musicUrl.isEmpty()) {
-                musicUrl = getFallbackUrl(songMid);
+                String fallback = getFallbackUrl(songMid);
+                if (fallback != null && !fallback.isEmpty() && WebMusicUtils.hasContentLength(fallback, null, null)) musicUrl = fallback;
             }
             if (musicUrl == null || musicUrl.isEmpty()) {
                 return errorResult(songMid + (mediaMid.isEmpty() ? "" : "," + mediaMid), selected,
-                        "QQ Music official API did not return a playable URL. The song may require membership, purchase, or DRM not exposed by the web cookie.");
+                        unavailableMessage(selected, ServiceCookieUtils.getCookies("qq")));
             }
             if (!WebMusicUtils.hasContentLength(musicUrl, null, null)) {
                 return errorResult(songMid + (mediaMid.isEmpty() ? "" : "," + mediaMid), selected,
-                        "QQ Music returned a URL, but the client cannot fetch it with HEAD/Content-Length. Try another song or a full browser request Cookie.");
+                        "QQ音乐播放失败：" + MusicErrorMessages.audioStatus(WebMusicUtils.probeAudio(musicUrl, null, null)) + "。");
             }
 
             JsonObject result = new JsonObject();
@@ -72,13 +76,18 @@ public class QQMusic {
             result.addProperty("url", musicUrl);
             result.addProperty("time", getInt(selected, "time", 0));
             result.addProperty("name", getString(selected, "name", songMid));
-            result.addProperty("singer", getString(selected, "singer", "QQ Music"));
+            result.addProperty("singer", getString(selected, "singer", "QQ音乐"));
             result.addProperty("lyric", getLyric(songMid, "lyric"));
             result.addProperty("lyricTr", getLyric(songMid, "trans"));
             result.addProperty("error", "");
+            double actual = WebMusicUtils.probeMp3Seconds(musicUrl);
+            if (getInt(selected, "time", 0) > 60 && actual > 0 && actual < getInt(selected, "time", 0) * 0.5) {
+                return errorResult(result.get("id").getAsString(), selected,
+                        "QQ音乐仅提供了约 " + (int) actual + " 秒的试听片段，请登录拥有这首歌播放权限的账号。");
+            }
             return result;
         } catch (Exception e) {
-            e.printStackTrace();
+            if (me.zhenxin.zmusic.ZMusic.log != null) me.zhenxin.zmusic.ZMusic.log.sendDebugMessage("音乐源请求失败: " + e.getClass().getSimpleName());
             return null;
         }
     }
@@ -113,11 +122,14 @@ public class QQMusic {
                 out.addProperty("name", clean(getString(item, "songname", getString(item, "title", songMid))));
                 out.addProperty("singer", singers(item.getAsJsonArray("singer")));
                 out.addProperty("time", getInt(item, "interval", 0));
+                JsonObject pay = getObject(item, "pay");
+                out.addProperty("paid", getInt(pay, "payplay", getInt(pay, "pay_play", 0)) == 1);
                 result.add(out);
             }
+            SongMetadataCache.remember("qq", result);
             return result;
         } catch (Exception e) {
-            e.printStackTrace();
+            if (me.zhenxin.zmusic.ZMusic.log != null) me.zhenxin.zmusic.ZMusic.log.sendDebugMessage("音乐源请求失败: " + e.getClass().getSimpleName());
             return null;
         }
     }
@@ -145,6 +157,8 @@ public class QQMusic {
             out.addProperty("name", clean(getString(song, "name", getString(song, "title", songMid))));
             out.addProperty("singer", singers(song.getAsJsonArray("singer")));
             out.addProperty("time", getInt(song, "interval", 0));
+            JsonObject pay = getObject(song, "pay");
+            out.addProperty("paid", getInt(pay, "payplay", getInt(pay, "pay_play", 0)) == 1);
             return out;
         } catch (Exception ignored) {
             return null;
@@ -180,7 +194,7 @@ public class QQMusic {
         result.addProperty("url", "");
         result.addProperty("time", getInt(selected, "time", 0));
         result.addProperty("name", getString(selected, "name", parseSongMid(id)));
-        result.addProperty("singer", getString(selected, "singer", "QQ Music"));
+        result.addProperty("singer", getString(selected, "singer", "QQ音乐"));
         result.addProperty("lyric", "");
         result.addProperty("lyricTr", "");
         result.addProperty("error", message);
@@ -199,14 +213,12 @@ public class QQMusic {
 
         String[] filenames = new String[] {
             "M800" + resolvedMediaMid + ".mp3",
-            "M500" + resolvedMediaMid + ".mp3",
-            "C400" + resolvedMediaMid + ".m4a",
-            "C200" + resolvedMediaMid + ".m4a"
+            "M500" + resolvedMediaMid + ".mp3"
         };
         for (String filename : filenames) {
             String url = getPlayUrlByFilename(songMid, filename);
             if (url != null && !url.isEmpty()) {
-                return url;
+                if (WebMusicUtils.hasContentLength(url, null, null)) return url;
             }
         }
         return "";
@@ -214,15 +226,11 @@ public class QQMusic {
 
     private static String getPlayUrlByFilename(String songMid, String filename) throws Exception {
         String cookie = ServiceCookieUtils.getCookies("qq");
-        String uin = qqUin(cookie);
+        String uin = QQAccount.uin(cookie);
         String guid = guid();
 
         JsonObject payload = new JsonObject();
-        JsonObject comm = new JsonObject();
-        comm.addProperty("uin", uin);
-        comm.addProperty("format", "json");
-        comm.addProperty("ct", 24);
-        comm.addProperty("cv", 0);
+        JsonObject comm = QQAccount.comm(cookie);
         payload.add("comm", comm);
 
         JsonObject req = new JsonObject();
@@ -231,7 +239,7 @@ public class QQMusic {
         JsonObject param = new JsonObject();
         param.addProperty("guid", guid);
         param.addProperty("uin", uin);
-        param.addProperty("loginflag", 1);
+        param.addProperty("loginflag", QQAccount.key(cookie).isEmpty() ? 0 : 1);
         param.addProperty("platform", "20");
         JsonArray mids = new JsonArray();
         mids.add(songMid);
@@ -245,8 +253,7 @@ public class QQMusic {
         req.add("param", param);
         payload.add("req_0", req);
 
-        String url = MUSICU_API + "?format=json&data=" + URLEncoder.encode(payload.toString(), "UTF-8");
-        JsonObject json = GSON.fromJson(WebMusicUtils.get(url, REFERER, cookie), JsonObject.class);
+        JsonObject json = GSON.fromJson(WebMusicUtils.postJson(MUSICU_API, REFERER, cookie, payload.toString()), JsonObject.class);
         JsonObject req0 = getObject(json, "req_0");
         JsonObject data = getObject(req0, "data");
         if (data == null || !data.has("midurlinfo")) {
@@ -305,15 +312,14 @@ public class QQMusic {
         return split >= 0 ? id.substring(split + 1).trim() : "";
     }
 
-    private static String qqUin(String cookie) {
-        String uin = ServiceCookieUtils.getCookieValue(cookie, "uin");
-        if (uin.isEmpty()) {
-            uin = ServiceCookieUtils.getCookieValue(cookie, "qqmusic_uin");
-        }
-        if (uin.startsWith("o")) {
-            uin = uin.substring(1);
-        }
-        return uin.isEmpty() ? "0" : uin;
+    static String unavailableMessage(JsonObject selected, String cookie) {
+        boolean paid = selected.has("paid") && selected.get("paid").getAsBoolean();
+        boolean logged = !QQAccount.uin(cookie).equals("0") && !QQAccount.key(cookie).isEmpty();
+        String title = getString(selected, "name", "这首歌");
+        return "QQ音乐" + (paid ? "标记《" + title + "》为付费播放，" : "未提供《" + title + "》的有效播放地址，")
+                + (logged ? "当前登录账号未取得该曲的音频授权，请检查会员、单独购买、地区权限及登录有效性。"
+                : "当前未配置有效音乐登录凭据。管理员可使用 /zm login qq qr 扫码登录有播放权限的账号。")
+                + "登录不会自动获得未购买的歌曲权限。";
     }
 
     private static String guid() {

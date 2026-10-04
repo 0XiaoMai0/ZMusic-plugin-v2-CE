@@ -13,8 +13,13 @@ import me.zhenxin.zmusic.utils.HelpUtils;
 import me.zhenxin.zmusic.utils.OtherUtils;
 
 import java.io.File;
+import java.io.UnsupportedEncodingException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class PlayList {
 
@@ -26,7 +31,11 @@ public class PlayList {
      * @param player 玩家
      */
     public static void subCommand(String[] args, Object player) {
-        switch (args[1]) {
+        if (args.length < 2) {
+            HelpUtils.sendHelp("playlist", player);
+            return;
+        }
+        switch (args[1].toLowerCase(Locale.ROOT)) {
             case "next":
                 ZMusic.message.sendNormalMessage("正在切换到下一首歌曲,请稍后...", player);
                 PlayListPlayer plp = PlayerData.getPlayerPlayListPlayer(player);
@@ -46,15 +55,20 @@ public class PlayList {
                 }
                 return;
             case "jump":
-                int jumpSong = 1;
+                int jumpSong;
                 String id = "";
                 try {
                     jumpSong = Integer.parseInt(args[2]);
                 } catch (Exception ignored) {
+                    ZMusic.message.sendErrorMessage("用法：/zm playlist jump <曲目序号> [当前歌单ID]", player);
+                    return;
                 }
-                ZMusic.message.sendNormalMessage("正在跳转到当前歌单中ID为§r[§e" + jumpSong + "§r]§a的歌曲,请稍后...", player);
                 PlayListPlayer plp3 = PlayerData.getPlayerPlayListPlayer(player);
                 if (plp3 != null) {
+                    if (plp3.playList == null || jumpSong < 1 || jumpSong > plp3.playList.size()) {
+                        ZMusic.message.sendErrorMessage("跳转失败：指定的曲目序号不存在。", player);
+                        return;
+                    }
                     try {
                         id = args[3];
                     } catch (Exception ignored) {
@@ -67,22 +81,27 @@ public class PlayList {
                     }
                     plp3.jumpSong = jumpSong;
                     plp3.jumpMusic = true;
+                    ZMusic.message.sendNormalMessage("正在跳转到当前歌单中第§e" + jumpSong + "§a首歌曲，请稍后...", player);
                 } else {
                     ZMusic.message.sendErrorMessage("错误: 当前未在播放歌单", player);
                 }
                 return;
             case "type":
-                switch (args[2]) {
+                if (args.length < 3) {
+                    HelpUtils.sendHelp("playlist", player);
+                    return;
+                }
+                switch (args[2].toLowerCase(Locale.ROOT)) {
                     case "normal":
-                        PlayerData.setPlayerPlayListType(player, args[2]);
+                        PlayerData.setPlayerPlayListType(player, "normal");
                         ZMusic.message.sendNormalMessage("成功将歌单播放类型设置为[§e顺序播放§a].", player);
                         break;
                     case "loop":
-                        PlayerData.setPlayerPlayListType(player, args[2]);
+                        PlayerData.setPlayerPlayListType(player, "loop");
                         ZMusic.message.sendNormalMessage("成功将歌单播放类型设置为[§e循环播放§a].", player);
                         break;
                     case "random":
-                        PlayerData.setPlayerPlayListType(player, args[2]);
+                        PlayerData.setPlayerPlayListType(player, "random");
                         ZMusic.message.sendNormalMessage("成功将歌单播放类型设置为[§e随机播放§a].", player);
                         break;
                     default:
@@ -96,13 +115,11 @@ public class PlayList {
             case "global":
                 String platform = "";
                 if (args.length >= 3) {
-                    platform = args[2];
+                    platform = args[2].toLowerCase(Locale.ROOT);
                     switch (platform) {
                         case "163":
                         case "netease":
                             platform = "netease";
-                            break;
-                        case "qq":
                             break;
                         default:
                             ZMusic.message.sendErrorMessage("错误：未知的平台", player);
@@ -113,9 +130,18 @@ public class PlayList {
                     return;
                 }
                 if (args.length >= 4) {
-                    switch (args[3]) {
+                    String action = args[3].toLowerCase(Locale.ROOT);
+                    if (args.length < 5 && (action.equals("show") || action.equals("play") || action.equals("playall"))) {
+                        HelpUtils.sendHelp("playlist", player);
+                        return;
+                    }
+                    switch (action) {
                         case "import":
                             if (ZMusic.player.hasPermission(player, "zmusic.admin")) {
+                                if (args.length < 5) {
+                                    HelpUtils.sendHelp("playlist", player);
+                                    break;
+                                }
                                 importPlayList(args[4], platform, player, true);
                                 break;
                             } else {
@@ -138,6 +164,11 @@ public class PlayList {
                             playPlayList(args[4], platform, player, new ArrayList<>(), true);
                             break;
                         case "playall":
+                            if (!ZMusic.player.hasPermission(player, "zmusic.admin")
+                                    && !ZMusic.player.hasPermission(player, "zmusic.playall")) {
+                                ZMusic.message.sendErrorMessage("权限不足，需要 zmusic.admin 或 zmusic.playall 权限。", player);
+                                return;
+                            }
                             List<Object> players = ZMusic.player.getOnlinePlayerList();
                             for (Object p : players) {
                                 OtherUtils.resetPlayerStatus(p);
@@ -165,22 +196,27 @@ public class PlayList {
                 break;
         }
         if (args.length >= 3) {
-            String platform = args[1];
+            String platform = args[1].toLowerCase(Locale.ROOT);
             switch (platform) {
                 case "163":
                 case "netease":
                     platform = "netease";
                     break;
-                case "qq":
-                    ZMusic.message.sendErrorMessage("由于不可抗力因素。", player);
-                    ZMusic.message.sendErrorMessage("QQ音乐搜索源已于2.5.0版本移除, API服务已关闭。", player);
-                    return;
                 default:
                     ZMusic.message.sendErrorMessage("错误：未知的平台", player);
                     return;
             }
-            switch (args[2]) {
+            String action = args[2].toLowerCase(Locale.ROOT);
+            if (args.length < 4 && (action.equals("show") || action.equals("play"))) {
+                HelpUtils.sendHelp("playlist", player);
+                return;
+            }
+            switch (action) {
                 case "import":
+                    if (args.length < 4) {
+                        HelpUtils.sendHelp("playlist", player);
+                        break;
+                    }
                     importPlayList(args[3], platform, player, false);
                     break;
                 case "list":
@@ -218,7 +254,7 @@ public class PlayList {
             String platformName;
             switch (platform) {
                 case "netease":
-                    id = url.split("playlist\\?id=")[1].split("&")[0];
+                    id = parseNeteasePlaylistId(url);
                     json = NeteaseCloudMusic.getMusicSongList(id);
                     platformName = "网易云音乐";
                     break;
@@ -250,8 +286,56 @@ public class PlayList {
         } catch (Exception e) {
             e.printStackTrace();
             ZMusic.message.sendErrorMessage("导入失败,请检查链接格式是否正确.", player);
-            ZMusic.message.sendErrorMessage("QQ音乐: https://y.qq.com/n/yqq/playlist/1937967578.html", player);
-            ZMusic.message.sendErrorMessage("网易云音乐: https://music.163.com/#/my/m/music/playlist?id=363046232", player);
+            ZMusic.message.sendErrorMessage("网易云音乐: https://music.163.com/playlist?id=363046232", player);
+        }
+    }
+
+    static String parseNeteasePlaylistId(String url) {
+        if (url == null || url.trim().isEmpty()) {
+            throw new IllegalArgumentException("歌单链接不能为空");
+        }
+
+        try {
+            URI uri = new URI(url.trim());
+            String id = findQueryParameter(uri.getRawQuery(), "id");
+            if (id == null && uri.getRawFragment() != null) {
+                String fragment = uri.getRawFragment();
+                int queryStart = fragment.indexOf('?');
+                if (queryStart >= 0) {
+                    id = findQueryParameter(fragment.substring(queryStart + 1), "id");
+                }
+            }
+            if (id == null || !id.matches("\\d+")) {
+                throw new IllegalArgumentException("歌单链接中缺少有效的 ID");
+            }
+            return id;
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException("歌单链接格式不正确", e);
+        }
+    }
+
+    private static String findQueryParameter(String query, String name) {
+        if (query == null || query.isEmpty()) {
+            return null;
+        }
+        for (String parameter : query.split("&")) {
+            int separator = parameter.indexOf('=');
+            if (separator < 0) {
+                continue;
+            }
+            String parameterName = decodeQueryValue(parameter.substring(0, separator));
+            if (name.equals(parameterName)) {
+                return decodeQueryValue(parameter.substring(separator + 1));
+            }
+        }
+        return null;
+    }
+
+    private static String decodeQueryValue(String value) {
+        try {
+            return URLDecoder.decode(value, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            throw new IllegalStateException("当前运行时不支持 UTF-8", e);
         }
     }
 
@@ -425,13 +509,6 @@ public class PlayList {
             for (JsonElement j : list) {
                 playList.add(j.getAsJsonObject());
             }
-            PlayListPlayer plp = PlayerData.getPlayerPlayListPlayer(player);
-            if (plp != null) {
-                plp.isStop = true;
-                PlayerData.setPlayerPlayListPlayer(player, null);
-                OtherUtils.resetPlayerStatus(player);
-                ZMusic.music.stop(player);
-            }
             PlayListPlayer playListPlayer = new PlayListPlayer();
             String type = PlayerData.getPlayerPlayListType(player);
             if (type == null || type.isEmpty()) {
@@ -444,8 +521,15 @@ public class PlayList {
             playListPlayer.platform = platform;
             playListPlayer.player = player;
             playListPlayer.init();
-            ZMusic.runTask.runAsync(playListPlayer);
-            PlayerData.setPlayerPlayListPlayer(player, playListPlayer);
+            synchronized (player) {
+                PlayListPlayer previousPlayListPlayer = PlayerData.getPlayerPlayListPlayer(player);
+                PlayerData.setPlayerPlayListPlayer(player, playListPlayer);
+                if (previousPlayListPlayer != null) {
+                    previousPlayListPlayer.isStop = true;
+                }
+                OtherUtils.resetPlayerStatus(player);
+                ZMusic.runTask.runAsync(playListPlayer);
+            }
         }
     }
 
@@ -460,15 +544,8 @@ public class PlayList {
         if (files != null) {
             for (String s : files) {
                 ZMusic.message.sendNormalMessage("§6=========================================", player);
-                switch (platform) {
-                    case "qq":
-                        importPlayList("playlist/" + s.split("\\.json")[0] + ".html", platform, player, isGlobal);
-                        break;
-                    case "netease":
-                        importPlayList("playlist?id=" + s.split("\\.json")[0], platform, player, isGlobal);
-                        break;
-                    default:
-                        break;
+                if (platform.equals("netease")) {
+                    importPlayList("playlist?id=" + s.split("\\.json")[0], platform, player, isGlobal);
                 }
             }
             ZMusic.message.sendNormalMessage("§6=========================================", player);

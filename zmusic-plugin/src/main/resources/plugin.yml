@@ -3,7 +3,7 @@ main: me.zhenxin.zmusic.ZMusicBukkit
 version: ${version}
 api-version: '1.13'
 author: ZhenXin
-description: A Minecraft music plugin supporting Bukkit, BungeeCord, and Velocity
+description: 支持 Bukkit、BungeeCord 和 Velocity 的游戏内音乐插件
 folia-supported: true
 softdepend:
   - Vault
@@ -11,7 +11,7 @@ softdepend:
 commands:
   zm:
     usage: /zm help
-    description: Main Command
+    description: 音乐指令，输入 /zm 后按 Tab 查看可用操作
     aliases:
       - zmusic
       - music

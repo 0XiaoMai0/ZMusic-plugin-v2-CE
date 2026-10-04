@@ -11,16 +11,17 @@ import me.zhenxin.zmusic.music.PlayList;
 import me.zhenxin.zmusic.music.PlayListPlayer;
 import me.zhenxin.zmusic.music.PlayMusic;
 import me.zhenxin.zmusic.music.SearchMusic;
+import me.zhenxin.zmusic.notice.NoticeService;
 import me.zhenxin.zmusic.utils.HelpUtils;
 import me.zhenxin.zmusic.utils.OtherUtils;
 import me.zhenxin.zmusic.utils.ServiceCookieUtils;
+import me.zhenxin.zmusic.audio.ModAudioServer;
 import me.zhenxin.zmusic.utils.Vault;
 import me.zhenxin.zmusic.login.LoginMethod;
 
 import java.io.UnsupportedEncodingException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 public class Cmd {
 
@@ -30,6 +31,10 @@ public class Cmd {
     public static boolean cmd(Object sender, String[] args) { // 指令输出
         if (ZMusic.isEnableEd) {
             if (ZMusic.isEnable) {
+                if (args.length > 0 && args[0].equalsIgnoreCase("notice")) {
+                    handleNoticeCommand(sender, args);
+                    return true;
+                }
                 boolean isUse;
                 boolean isAdmin;
                 boolean isPlayAll;
@@ -75,7 +80,12 @@ public class Cmd {
                                 handleStopAllCommand(sender, isAdmin);
                                 break;
                             case "login":
-                                handleLoginCommand(sender, args, isAdmin);
+                                ZMusic.runTask.runAsync(() -> handleLoginCommand(sender, args, isAdmin));
+                                break;
+                            case "diagnose":
+                                if (!isAdmin) { ZMusic.message.sendErrorMessage("需要 zmusic.admin 权限。", sender); break; }
+                                if (args.length < 3) { ZMusic.message.sendErrorMessage("用法: /zm diagnose <163|qq|kugou|kuwo|bilibili> <关键词>", sender); break; }
+                                ZMusic.runTask.runAsync(() -> me.zhenxin.zmusic.music.SourceDiagnostics.run(sender, args[1], OtherUtils.argsXin1(args)));
                                 break;
                             case "help":
                                 handleHelpCommand(sender, args);
@@ -107,97 +117,7 @@ public class Cmd {
     }
 
     public static List<String> tab(Object sender, String[] args) {
-        boolean isAdmin;
-        if (ZMusic.player.isPlayer(sender)) {
-            isAdmin = ZMusic.player.hasPermission(sender, "zmusic.admin");
-        } else {
-            isAdmin = true;
-        }
-
-        String[] commandList = new String[0];
-        if (args.length == 0) {
-            return new ArrayList<>();
-        } else if (args.length >= 1) {
-            if (args.length == 1) {
-                if (isAdmin) {
-                    commandList = new String[] { "help", "play", "playlist", "music", "stop", "loop", "login",
-                            "search", "url", "playAll", "stopAll", "update", "reload" };
-                } else {
-                    commandList = new String[] { "help", "play", "playlist", "music", "stop", "loop", "search",
-                            "url" };
-                }
-                return Arrays.stream(commandList).filter(s -> s.startsWith(args[0])).collect(Collectors.toList());
-            } else if (args[0].equalsIgnoreCase("play") ||
-                    args[0].equalsIgnoreCase("music") ||
-                    args[0].equalsIgnoreCase("search") ||
-                    args[0].equalsIgnoreCase("playAll")) {
-                if (args.length == 2) {
-                    commandList = new String[] { "qq", "163", "netease", "kuwo", "kugou", "bilibili" };
-                    return Arrays.stream(commandList).filter(s -> s.startsWith(args[1])).collect(Collectors.toList());
-                }
-                return new ArrayList<>();
-            } else if (args[0].equalsIgnoreCase("help")) {
-                if (args.length == 2) {
-                    if (isAdmin) {
-                        commandList = new String[] { "play", "playlist", "music", "search", "url", "admin" };
-                    } else {
-                        commandList = new String[] { "play", "playlist", "music", "search", "url" };
-                    }
-                    return Arrays.stream(commandList).filter(s -> s.startsWith(args[1])).collect(Collectors.toList());
-                }
-                return new ArrayList<>();
-            } else if (args[0].equalsIgnoreCase("playlist")) {
-                if (args.length == 2) {
-                    commandList = new String[] { "qq", "netease", "163", "type", "global", "next", "prev", "jump" };
-                    return Arrays.stream(commandList).filter(s -> s.startsWith(args[1])).collect(Collectors.toList());
-                } else if (args.length == 3) {
-                    if (args[1].equalsIgnoreCase("type")) {
-                        commandList = new String[] { "random", "normal", "loop" };
-                        return Arrays.stream(commandList).filter(s -> s.startsWith(args[2]))
-                                .collect(Collectors.toList());
-                    } else if (args[1].equalsIgnoreCase("global")) {
-                        commandList = new String[] { "qq", "netease", "163" };
-                        return Arrays.stream(commandList).filter(s -> s.startsWith(args[2]))
-                                .collect(Collectors.toList());
-                    } else {
-                        commandList = new String[] { "import", "play", "list", "update", "show" };
-                        return Arrays.stream(commandList).filter(s -> s.startsWith(args[2]))
-                                .collect(Collectors.toList());
-                    }
-                } else if (args.length == 4) {
-                    if (args[2].equalsIgnoreCase("qq") ||
-                            args[2].equalsIgnoreCase("163") ||
-                            args[2].equalsIgnoreCase("netease")) {
-                        commandList = new String[] { "import", "play", "list", "update", "show" };
-                        return Arrays.stream(commandList).filter(s -> s.startsWith(args[3]))
-                                .collect(Collectors.toList());
-                    }
-                    return new ArrayList<>();
-                }
-                return new ArrayList<>();
-            } else if (args[0].equalsIgnoreCase("login")) {
-                if (!isAdmin) {
-                    return new ArrayList<>();
-                }
-                if (args.length == 2) {
-                    commandList = new String[] { "qr", "phone", "email", "sendcode", "verify", "status", "raw", "qq", "kugou", "kuwo" };
-                    return Arrays.stream(commandList).filter(s -> s.startsWith(args[1])).collect(Collectors.toList());
-                } else if (args.length == 3 && (args[1].equalsIgnoreCase("qq")
-                        || args[1].equalsIgnoreCase("kugou")
-                        || args[1].equalsIgnoreCase("kuwo"))) {
-                    commandList = new String[] { "qr", "raw", "status" };
-                    return Arrays.stream(commandList).filter(s -> s.startsWith(args[2])).collect(Collectors.toList());
-                } else if (args.length == 3 && (args[1].equalsIgnoreCase("phone")
-                        || args[1].equalsIgnoreCase("sendcode")
-                        || args[1].equalsIgnoreCase("verify"))) {
-                    commandList = new String[] { "+86", "+852", "+853", "+886" };
-                    return Arrays.stream(commandList).filter(s -> s.startsWith(args[2])).collect(Collectors.toList());
-                }
-                return new ArrayList<>();
-            }
-            return new ArrayList<>();
-        }
-        return Arrays.stream(commandList).filter(s -> s.startsWith(args[0])).collect(Collectors.toList());
+        return CommandCompletion.complete(args, new CompletionContext(sender));
     }
 
     private static void handleMusicCommand(Object sender, String[] args) {
@@ -211,14 +131,8 @@ public class Cmd {
                 };
                 if (!ZMusic.player.hasPermission(sender, "zmusic.bypass")) {
                     if (!cooldownStats.contains(sender)) {
-                        if (!ZMusic.isBC) {
-                            if (Config.realSupportVault) {
-                                if (Config.money > 0) {
-                                    if (!Vault.take(sender)) {
-                                        return;
-                                    }
-                                }
-                            }
+                        if (!takeMoneyIfNecessary(sender)) {
+                            return;
                         }
                         ZMusic.runTask.runAsync(startPlay);
                         if (cooldownSec > 0) {
@@ -252,6 +166,13 @@ public class Cmd {
         } else {
             ZMusic.message.sendErrorMessage("错误: 该命令只能由玩家使用", sender);
         }
+    }
+
+    private static boolean takeMoneyIfNecessary(Object sender) {
+        if (ZMusic.isBC || ZMusic.isVelocity || !Config.realSupportVault || Config.money <= 0) {
+            return true;
+        }
+        return Vault.take(sender);
     }
 
     private static void handlePlayCommand(Object sender, String[] args) {
@@ -291,7 +212,6 @@ public class Cmd {
             if (plp != null) {
                 plp.isStop = true;
                 PlayerData.setPlayerPlayListPlayer(sender, null);
-                OtherUtils.resetPlayerStatus(sender);
             }
             OtherUtils.resetPlayerStatus(sender);
             ZMusic.message.sendNormalMessage("停止播放音乐成功!", sender);
@@ -392,8 +312,31 @@ public class Cmd {
             return;
         }
 
-        if ("qq".equalsIgnoreCase(args[1]) || "kugou".equalsIgnoreCase(args[1]) || "kuwo".equalsIgnoreCase(args[1])) {
-            handleServiceLoginCommand(sender, args);
+        String service = args[1].toLowerCase(Locale.ROOT);
+        if (service.equals("qq") || service.equals("kuwo")) {
+            me.zhenxin.zmusic.login.NativeLogin.handle(sender, service, args);
+            return;
+        }
+        if (Arrays.asList("kugou", "bilibili").contains(service)) {
+            if (args.length >= 3 && "status".equalsIgnoreCase(args[2])) {
+                ZMusic.message.sendNormalMessage(me.zhenxin.zmusic.language.MusicErrorMessages.sourceName(service) + (ServiceCookieUtils.hasCookies(service)
+                        ? "的登录凭据已保存，是否有效请用 /zm diagnose 检查具体歌曲。" : "尚未保存登录凭据。"), sender);
+            } else if (args.length >= 4 && "raw".equalsIgnoreCase(args[2])) {
+                String cookie = String.join(" ", Arrays.copyOfRange(args, 3, args.length));
+                if (!cookie.contains("=")) { ZMusic.message.sendErrorMessage("无效的 Cookie 格式。", sender); return; }
+                ServiceCookieUtils.saveCookies(service, cookie);
+                ZMusic.message.sendNormalMessage(me.zhenxin.zmusic.language.MusicErrorMessages.sourceName(service) + "的登录凭据已保存。", sender);
+            } else {
+                ZMusic.message.sendNormalMessage("用法: /zm login " + service + " <raw 完整Cookie|status>。请在官方网页登录后，从浏览器网络请求中复制完整的登录凭据（Cookie）。", sender);
+            }
+            return;
+        }
+        if ("netease".equals(service) || "163".equals(service)) {
+            handleLoginCommand(sender, Arrays.copyOfRange(args, 1, args.length), true);
+            return;
+        }
+        if ("direct/".equals(Config.neteaseApiRoot) && !"raw".equals(service) && !"status".equals(service)) {
+            ZMusic.message.sendErrorMessage("内置网易云模式支持 /zm login raw Cookie；二维码、验证码或密码登录需将 api.netease 设置为自建 NeteaseCloudMusicApi。", sender);
             return;
         }
 
@@ -477,115 +420,9 @@ public class Cmd {
         String nickname = NeteaseLogin.nickname();
         if (nickname.isEmpty()) {
             ZMusic.message.sendNormalMessage("您当前未登录网易云音乐。", sender);
-            ZMusic.message.sendNormalMessage("NetEase status: " + NeteaseLogin.statusSummary(), sender);
         } else {
             ZMusic.message.sendNormalMessage("您已登录网易云音乐，昵称: " + nickname, sender);
         }
-    }
-
-    private static void handleServiceLoginCommand(Object sender, String[] args) {
-        String service = args[1].toLowerCase(Locale.ROOT);
-        String displayName = "qq".equals(service) ? "QQ音乐" : "酷狗音乐";
-        if ("kuwo".equals(service)) {
-            displayName = "Kuwo Music";
-        }
-        if (args.length < 3) {
-            ZMusic.message.sendErrorMessage("用法: /zm login " + service + " <qr|raw|status>", sender);
-            return;
-        }
-        if ("qr".equalsIgnoreCase(args[2])) {
-            sendServiceQrHelp(service, displayName, sender);
-            return;
-        }
-        if ("status".equalsIgnoreCase(args[2])) {
-            if (ServiceCookieUtils.hasCookies(service)) {
-                ZMusic.message.sendNormalMessage(displayName + " cookies 已保存。", sender);
-                ZMusic.message.sendNormalMessage(describeServiceCookies(service), sender);
-            } else {
-                ZMusic.message.sendNormalMessage(displayName + " cookies 未保存。", sender);
-            }
-            return;
-        }
-        if (!"raw".equalsIgnoreCase(args[2])) {
-            ZMusic.message.sendErrorMessage("用法: /zm login " + service + " <qr|raw|status>", sender);
-            return;
-        }
-        if (args.length < 4) {
-            ZMusic.message.sendErrorMessage("用法: /zm login " + service + " raw [cookie1=value1; cookie2=value2; ...]", sender);
-            ZMusic.message.sendErrorMessage("请先在浏览器登录" + displayName + "网页版，然后在控制台执行 console.log(document.cookie); 再粘贴结果。", sender);
-            return;
-        }
-        String rawCookies = String.join(" ", Arrays.copyOfRange(args, 3, args.length));
-        if (!rawCookies.contains("=")) {
-            ZMusic.message.sendErrorMessage("无效的 Cookies 格式。", sender);
-            return;
-        }
-        ServiceCookieUtils.saveCookies(service, rawCookies);
-        ZMusic.message.sendNormalMessage(displayName + " cookies 已保存。", sender);
-        ZMusic.message.sendNormalMessage(describeServiceCookies(service), sender);
-    }
-
-    private static void sendServiceQrHelp(String service, String displayName, Object sender) {
-        if ("kuwo".equalsIgnoreCase(service)) {
-            ZMusic.message.sendNormalMessage("Kuwo Music does not provide a stable public QR login API for this plugin.", sender);
-            ZMusic.message.sendNormalMessage("Open https://www.kuwo.cn/ in your browser, login, then copy the full Network Cookie.", sender);
-            ZMusic.message.sendNormalMessage("Then use /zm login kuwo raw <full Cookie>", sender);
-            ZMusic.message.sendNormalMessage("Tip: the Cookie should usually include kw_token; Network Cookie is better than document.cookie.", sender);
-            return;
-        }
-        if ("qq".equalsIgnoreCase(service)) {
-            ZMusic.message.sendNormalMessage("QQ音乐没有稳定公开的插件二维码登录 API。", sender);
-            ZMusic.message.sendNormalMessage("请打开 https://y.qq.com/ ，网页登录后复制 Network 请求头里的完整 Cookie。", sender);
-        } else {
-            ZMusic.message.sendNormalMessage("酷狗音乐没有稳定公开的插件二维码登录 API。", sender);
-            ZMusic.message.sendNormalMessage("请打开 https://www.kugou.com/ ，网页登录后复制 Network 请求头里的完整 Cookie。", sender);
-        }
-        ZMusic.message.sendNormalMessage("然后使用 /zm login " + service + " raw <完整Cookie>", sender);
-        ZMusic.message.sendNormalMessage("注意: document.cookie 可能缺少 HttpOnly 登录字段，优先复制 Network 里的 Cookie 请求头。", sender);
-    }
-
-    private static String describeServiceCookies(String service) {
-        String cookies = ServiceCookieUtils.getCookies(service);
-        if (cookies.isEmpty()) {
-            return "Cookie status: empty";
-        }
-        if ("qq".equalsIgnoreCase(service)) {
-            String uin = ServiceCookieUtils.getCookieValue(cookies, "uin");
-            if (uin.isEmpty()) {
-                uin = ServiceCookieUtils.getCookieValue(cookies, "qqmusic_uin");
-            }
-            boolean hasToken = !ServiceCookieUtils.getCookieValue(cookies, "qm_keyst").isEmpty()
-                    || !ServiceCookieUtils.getCookieValue(cookies, "qqmusic_key").isEmpty()
-                    || !ServiceCookieUtils.getCookieValue(cookies, "p_skey").isEmpty()
-                    || !ServiceCookieUtils.getCookieValue(cookies, "skey").isEmpty();
-            return "QQ cookie status: uin=" + (uin.isEmpty() ? "missing" : mask(uin))
-                    + ", auth token=" + (hasToken ? "present" : "missing")
-                    + ". If purl is empty, QQ official API did not authorize this song URL.";
-        }
-        if ("kugou".equalsIgnoreCase(service)) {
-            String kugoo = ServiceCookieUtils.getCookieValue(cookies, "KuGoo");
-            String mid = ServiceCookieUtils.getCookieValue(cookies, "kg_mid");
-            boolean hasUser = kugoo.contains("KugooID=");
-            boolean hasToken = kugoo.contains("&t=") || kugoo.contains(" t=");
-            return "Kugou cookie status: KugooID=" + (hasUser ? "present" : "missing")
-                    + ", token=" + (hasToken ? "present" : "missing")
-                    + ", kg_mid=" + (mid.isEmpty() ? "missing" : "present")
-                    + ". If error says paid/official API returned no URL, the web cookie was not enough for that member song.";
-        }
-        if ("kuwo".equalsIgnoreCase(service)) {
-            String token = ServiceCookieUtils.getCookieValue(cookies, "kw_token");
-            return "Kuwo cookie status: kw_token=" + (token.isEmpty() ? "missing" : "present")
-                    + ", cookie=" + (cookies.isEmpty() ? "missing" : "present")
-                    + ". If VIP URL is empty, Kuwo official API did not authorize this song URL.";
-        }
-        return "Cookie status: length=" + cookies.length();
-    }
-
-    private static String mask(String value) {
-        if (value == null || value.length() <= 4) {
-            return "present";
-        }
-        return value.substring(0, 2) + "***" + value.substring(value.length() - 2);
     }
 
     private static void handleHelpCommand(Object sender, String[] args) {
@@ -600,17 +437,62 @@ public class Cmd {
     private static void handleReloadCommand(Object sender, boolean isAdmin) {
         // Extracted logic for "reload" command
         if (isAdmin) {
+            me.zhenxin.zmusic.login.NativeLogin.close();
             new LoadConfig().reload(sender);
-            ZMusic.runTask.runAsync(() -> new LoadLang().load());
+            ModAudioServer.start();
+            me.zhenxin.zmusic.login.NativeLogin.open();
+            ZMusic.runTask.runAsync(() -> {
+                new LoadLang().load();
+                if (ZMusic.notice != null) {
+                    ZMusic.notice.refresh();
+                }
+            });
         } else {
             ZMusic.message.sendErrorMessage("权限不足，你需要 zmusic.admin 权限此使用命令.", sender);
         }
     }
 
+    private static void handleNoticeCommand(Object sender, String[] args) {
+        if (!ZMusic.player.isPlayer(sender)) {
+            ZMusic.message.sendErrorMessage("错误: 该命令只能由玩家使用", sender);
+            return;
+        }
+        if (!ZMusic.player.hasPermission(sender, "zmusic.admin")) {
+            ZMusic.message.sendErrorMessage("权限不足，你需要 zmusic.admin 权限使用此命令.", sender);
+            return;
+        }
+        if (args.length != 3 || !args[1].equalsIgnoreCase("read")) {
+            ZMusic.message.sendErrorMessage("无效的公告操作.", sender);
+            return;
+        }
+        if (ZMusic.notice == null) {
+            ZMusic.message.sendErrorMessage("公告功能当前不可用.", sender);
+            return;
+        }
+
+        NoticeService.MarkReadResult result = ZMusic.notice.markRead(sender, args[2]);
+        switch (result) {
+            case MARKED:
+                ZMusic.message.sendNormalMessage("已标记为已读，之后不再提醒此条公告.", sender);
+                break;
+            case ALREADY_READ:
+                ZMusic.message.sendNormalMessage("此条公告已经标记为已读.", sender);
+                break;
+            case NOT_FOUND:
+                ZMusic.message.sendErrorMessage("公告不存在或已下架.", sender);
+                break;
+            case FAILED:
+                ZMusic.message.sendErrorMessage("保存公告已读状态失败.", sender);
+                break;
+            default:
+                throw new IllegalStateException("未知公告已读结果: " + result);
+        }
+    }
+
     private static void handleUpdateCommand(Object sender, boolean isAdmin) {
-        // Extracted logic for "update" command
+        // 社区版不查询官版更新接口，避免把官版当成社区版升级。
         if (isAdmin) {
-            OtherUtils.checkUpdate(sender, true);
+            ZMusic.message.sendNormalMessage("社区版已关闭官方更新检查，请使用社区版发布的安装包更新。", sender);
         } else {
             ZMusic.message.sendErrorMessage("权限不足，你需要 zmusic.admin 权限此使用命令.", sender);
         }
@@ -657,15 +539,9 @@ public class Cmd {
                                     ZMusic.message.sendNormalMessage("请在手机上确认登录!", sender);
                                     break;
                                 case 803:
-                                    String nickname = NeteaseLogin.nickname();
-                                    if (nickname.isEmpty()) {
-                                        ZMusic.message.sendErrorMessage("NetEase QR confirmed, but API still reports not logged in.", sender);
-                                        ZMusic.message.sendErrorMessage("NetEase status: " + NeteaseLogin.statusSummary(), sender);
-                                    } else {
-                                        ZMusic.message.sendNormalMessage(
-                                                "您已登录网易云音乐, 昵称: " + nickname,
-                                                sender);
-                                    }
+                                    ZMusic.message.sendNormalMessage(
+                                            "您已登录网易云音乐, 昵称: " + NeteaseLogin.nickname(),
+                                            sender);
                                     cancel = true;
                                     break;
                                 default:
@@ -681,27 +557,14 @@ public class Cmd {
             } catch (UnsupportedEncodingException e) {
                 ZMusic.message.sendErrorMessage("登录失败! 请检查后台错误. (不支持的编码)", sender);
                 e.printStackTrace();
-            } catch (Exception e) {
-                ZMusic.message.sendErrorMessage("登录失败! 请检查后台错误和 api.netease。", sender);
+            } catch (NullPointerException e) {
+                ZMusic.message.sendErrorMessage("登录失败! 请检查后台错误. (空指针)", sender);
                 e.printStackTrace();
             }
         });
     }
 
     private static void loginByPhone(Object sender, String username, String password, String ctCode) {
-        if (System.currentTimeMillis() >= 0) {
-            ZMusic.message.sendErrorMessage("警告: 密码登录容易触发风控，建议使用二维码或 raw cookie 登录。", sender);
-            ZMusic.runTask.runAsync(() -> {
-                String md5 = OtherUtils.md5(password);
-                boolean ok = NeteaseLogin.password_phone(username, md5, ctCode, true);
-                if (ok) {
-                    ZMusic.message.sendNormalMessage("网易云手机号登录成功。", sender);
-                } else {
-                    ZMusic.message.sendErrorMessage("网易云手机号登录失败，请检查后台日志和 api.netease。", sender);
-                }
-            });
-            return;
-        }
         ZMusic.message.sendErrorMessage("警告: 密码登录容易引发风控，建议使用二维码登录。", sender);
         ZMusic.message.sendErrorMessage("安全提示: 密码可能会被服务器日志记录，请确保服务器安全。", sender);
 
@@ -710,19 +573,6 @@ public class Cmd {
     }
 
     private static void loginByEmail(Object sender, String username, String password) {
-        if (System.currentTimeMillis() >= 0) {
-            ZMusic.message.sendErrorMessage("警告: 密码登录容易触发风控，建议使用二维码或 raw cookie 登录。", sender);
-            ZMusic.runTask.runAsync(() -> {
-                String md5 = OtherUtils.md5(password);
-                boolean ok = NeteaseLogin.password_email(username, md5, true);
-                if (ok) {
-                    ZMusic.message.sendNormalMessage("网易云邮箱登录成功。", sender);
-                } else {
-                    ZMusic.message.sendErrorMessage("网易云邮箱登录失败，请检查后台日志和 api.netease。", sender);
-                }
-            });
-            return;
-        }
         ZMusic.message.sendErrorMessage("警告: 密码登录容易引发风控，建议使用二维码登录。", sender);
         ZMusic.message.sendErrorMessage("安全提示: 密码可能会被服务器日志记录，请确保服务器安全。", sender);
 
@@ -731,33 +581,11 @@ public class Cmd {
     }
 
     private static void loginSendCode(Object sender, String phone, String ctCode) {
-        if (System.currentTimeMillis() >= 0) {
-            ZMusic.runTask.runAsync(() -> {
-                boolean ok = NeteaseLogin.sendCode(phone, ctCode);
-                if (ok) {
-                    ZMusic.message.sendNormalMessage("验证码已发送至: " + phone + "，请查收后使用 verify 校验。", sender);
-                } else {
-                    ZMusic.message.sendErrorMessage("验证码发送失败，请检查后台日志和 api.netease。", sender);
-                }
-            });
-            return;
-        }
         NeteaseLogin.sendCode(phone, ctCode);
         ZMusic.message.sendNormalMessage("验证码已发送至: " + phone + ", 请查收后使用 verify 校验", sender);
     }
 
     private static void loginByVerifyCode(Object sender, String phone, String ctCode, String code) {
-        if (System.currentTimeMillis() >= 0) {
-            ZMusic.runTask.runAsync(() -> {
-                boolean ok = NeteaseLogin.verify(phone, code, ctCode);
-                if (ok) {
-                    ZMusic.message.sendNormalMessage("网易云验证码登录成功: " + phone, sender);
-                } else {
-                    ZMusic.message.sendErrorMessage("网易云验证码登录失败，请检查验证码、后台日志和 api.netease。", sender);
-                }
-            });
-            return;
-        }
         NeteaseLogin.verify(phone, code, ctCode);
         ZMusic.message.sendNormalMessage("验证码验证请求已提交: " + phone, sender);
 

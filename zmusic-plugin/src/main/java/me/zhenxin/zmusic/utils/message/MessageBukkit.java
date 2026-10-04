@@ -5,6 +5,8 @@ import me.zhenxin.zmusic.component.ZComponent;
 import me.zhenxin.zmusic.component.adapter.BungeeComponentAdapter;
 import me.zhenxin.zmusic.config.Config;
 import me.zhenxin.zmusic.language.Lang;
+import me.zhenxin.zmusic.nms.ActionBar_1_8_R3;
+import me.zhenxin.zmusic.utils.runtask.BukkitTaskScheduler;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.ChatColor;
@@ -18,43 +20,57 @@ public class MessageBukkit implements Message {
     @Override
     public void sendNormalMessage(String message, Object playerObj) {
         CommandSender sender = (CommandSender) playerObj;
-        sender.sendMessage(Config.prefix + ChatColor.GREEN + message);
+        sendMessage(sender, Config.prefix + ChatColor.GREEN + message);
     }
 
     @Override
     public void sendErrorMessage(String message, Object playerObj) {
         CommandSender sender = (CommandSender) playerObj;
-        sender.sendMessage(Config.prefix + ChatColor.RED + message);
+        sendMessage(sender, Config.prefix + ChatColor.RED + message);
     }
 
     @Override
     public void sendJsonMessage(ZComponent message, Object playerObj) {
         Player player = (Player) playerObj;
         TextComponent bungeeComponent = adapter.adapt(message);
-        player.spigot().sendMessage(bungeeComponent);
+        BukkitTaskScheduler.run(player, () -> player.spigot().sendMessage(bungeeComponent));
     }
 
     @Override
     public void sendActionBarMessage(ZComponent message, Object playerObj) {
         Player player = (Player) playerObj;
         TextComponent bungeeComponent = adapter.adapt(message);
-        player.spigot().sendMessage(ChatMessageType.ACTION_BAR, bungeeComponent);
+        BukkitTaskScheduler.run(player, () -> {
+            try {
+                player.spigot().sendMessage(ChatMessageType.ACTION_BAR, bungeeComponent);
+            } catch (NoSuchMethodError ignored) {
+                new ActionBar_1_8_R3().sendActionBar(player, bungeeComponent.toLegacyText());
+            }
+        });
     }
 
     @Override
     public void sendTitleMessage(String title, String subTitle, Object playerObj) {
         Player player = (Player) playerObj;
-        try {
+        BukkitTaskScheduler.run(player, () -> { try {
             player.sendTitle(title, subTitle, 0, 200, 20);
             ZMusic.log.sendDebugMessage(title + " " + subTitle);
         } catch (NoSuchMethodError e) {
             player.sendTitle(title, subTitle);
-        }
+        } });
     }
 
     @Override
     public void sendNull(Object playerObj) {
         CommandSender sender = (CommandSender) playerObj;
-        sender.sendMessage(Config.prefix + ChatColor.GREEN + Lang.helpHelp);
+        sendMessage(sender, Config.prefix + ChatColor.GREEN + Lang.helpHelp);
+    }
+
+    private void sendMessage(CommandSender sender, String message) {
+        if (sender instanceof Player) {
+            BukkitTaskScheduler.run((Player) sender, () -> sender.sendMessage(message));
+        } else {
+            sender.sendMessage(message);
+        }
     }
 }

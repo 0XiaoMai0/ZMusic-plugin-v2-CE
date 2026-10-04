@@ -1,0 +1,18 @@
+{
+  "version": "2.14.0-CE.3",
+  "timestamp": "2026-10-04T14:20:37.7582129+08:00",
+  "enabled": true,
+  "ready": true,
+  "errors": 0,
+  "logModifiedAt": "2026-10-04T14:19:59.8524614+08:00",
+  "listeners": [
+    {
+      "LocalAddress": "127.0.0.1",
+      "LocalPort": 25576
+    },
+    {
+      "LocalAddress": "127.0.0.1",
+      "LocalPort": 18081
+    }
+  ]
+}

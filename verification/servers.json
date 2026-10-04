@@ -1,0 +1,42 @@
+[
+  {
+    "minecraft": "1.8.8",
+    "java": 8,
+    "version": "2.14.0-CE.2",
+    "enabled": true,
+    "done": true,
+    "disabled": true,
+    "audioServiceStarted": true,
+    "fullGameGuiTested": false
+  },
+  {
+    "minecraft": "1.12.2",
+    "java": 8,
+    "version": "2.14.0-CE.2",
+    "enabled": true,
+    "done": true,
+    "disabled": true,
+    "audioServiceStarted": true,
+    "fullGameGuiTested": false
+  },
+  {
+    "minecraft": "26.2",
+    "java": 25,
+    "version": "2.14.0-CE.2",
+    "enabled": true,
+    "done": true,
+    "disabled": true,
+    "audioServiceStarted": true,
+    "fullGameGuiTested": false
+  },
+  {
+    "minecraft": "26.3",
+    "java": 25,
+    "version": "2.14.0-CE.2",
+    "enabled": true,
+    "done": true,
+    "disabled": true,
+    "audioServiceStarted": true,
+    "fullGameGuiTested": false
+  }
+]

@@ -67,12 +67,13 @@ public class NeteaseCloudMusic {
             } catch (Exception ignored) {
             }
 
-            String musicUrl = getSongUrl(gson, musicId, "exhigh");
-            if (musicUrl == null || musicUrl.isEmpty()) {
-                musicUrl = getSongUrl(gson, musicId, "standard");
-            }
-            if (musicUrl == null || musicUrl.isEmpty()) {
-                musicUrl = getLegacySongUrl(gson, musicId);
+            String getUrlParam = "id=" + musicId + "&level=exhigh";
+            JsonObject getUrlJson = gson.fromJson(NetUtils.postNetString(Config.neteaseApiRoot + "song/url/v1", null, getUrlParam), JsonObject.class);
+            String musicUrl = null;
+            try {
+                musicUrl = getUrlJson.get("data").getAsJsonArray().get(0).getAsJsonObject().get("url").getAsString();
+            } catch (Exception e) {
+                e.printStackTrace();
             }
 
             StringBuilder sb = new StringBuilder();
@@ -108,7 +109,7 @@ public class NeteaseCloudMusic {
             JsonObject json = gson.fromJson(jsonText, JsonObject.class);
             JsonObject result = json.getAsJsonObject("result");
             JsonArray returnJson = new JsonArray();
-            if (result != null && result.get("songCount").getAsInt() != 0) {
+            if (result != null && result.has("songs") && result.get("songCount").getAsInt() != 0) {
                 JsonArray jsonOut = result.getAsJsonArray("songs");
                 for (JsonElement j : jsonOut) {
                     String name = j.getAsJsonObject().get("name").getAsString();
@@ -131,26 +132,6 @@ public class NeteaseCloudMusic {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            return null;
-        }
-    }
-
-    private static String getSongUrl(Gson gson, long musicId, String level) {
-        try {
-            String getUrlParam = "id=" + musicId + "&level=" + level;
-            JsonObject getUrlJson = gson.fromJson(NetUtils.postNetString(Config.neteaseApiRoot + "song/url/v1", null, getUrlParam), JsonObject.class);
-            return getUrlJson.get("data").getAsJsonArray().get(0).getAsJsonObject().get("url").getAsString();
-        } catch (Exception ignored) {
-            return null;
-        }
-    }
-
-    private static String getLegacySongUrl(Gson gson, long musicId) {
-        try {
-            String getUrlParam = "id=" + musicId + "&br=128000";
-            JsonObject getUrlJson = gson.fromJson(NetUtils.postNetString(Config.neteaseApiRoot + "song/url", null, getUrlParam), JsonObject.class);
-            return getUrlJson.get("data").getAsJsonArray().get(0).getAsJsonObject().get("url").getAsString();
-        } catch (Exception ignored) {
             return null;
         }
     }

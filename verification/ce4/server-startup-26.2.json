@@ -1,0 +1,20 @@
+{
+  "server": "Purpur 26.2-2633",
+  "version": "2.14.0-CE.4",
+  "jarSha256": "833d77221671398e4748a4efe91ab373593b4de77dba66f450d9c7d3c5be29b5",
+  "deployedMatches": true,
+  "completionClassMajor": 52,
+  "startupComplete": true,
+  "startupErrors": 0,
+  "javaPid": 55004,
+  "windowPid": 49832,
+  "startedAt": "2026-10-04T14:50:38.3449878+08:00",
+  "checkedAt": "2026-10-04T14:52:13.8077851+08:00",
+  "address": "127.0.0.1:25576",
+  "startupEvidence": [
+    "[14:50:46] [Server thread/INFO]: [ZMusic] Loading server plugin ZMusic v2.14.0-CE.4",
+    "[14:50:47] [Server thread/INFO]: [ZMusic] Enabling ZMusic v2.14.0-CE.4",
+    "[14:50:47] [Server thread/INFO]: Done (8.449s)! For help, type \"help\"",
+    "[14:50:48] [Craft Scheduler Thread - 3 - ZMusic/INFO]: ZMusic >>> 插件已加载完成!"
+  ]
+}

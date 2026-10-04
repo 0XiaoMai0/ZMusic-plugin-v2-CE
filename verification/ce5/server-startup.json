@@ -1,0 +1,35 @@
+{
+  "version": "2.14.0-CE.5",
+  "server": "Purpur 26.2-2633",
+  "address": "127.0.0.1:25576",
+  "visibleConsole": true,
+  "loaded": true,
+  "done": true,
+  "startupErrors": 0,
+  "cookieFiles": [
+    {
+      "file": "bilibili-cookies.txt",
+      "bytes": 0
+    },
+    {
+      "file": "cookies.txt",
+      "bytes": 267
+    },
+    {
+      "file": "kugou-cookies.txt",
+      "bytes": 1146
+    },
+    {
+      "file": "kuwo-cookies.txt",
+      "bytes": 0
+    },
+    {
+      "file": "qq-cookies.txt",
+      "bytes": 0
+    }
+  ],
+  "kugouCredentialsPreserved": true,
+  "installedJarMatchesBuild": true,
+  "jarSha256": "3633B3E5EF29F46778756A0E289CF1809A8DC7FB36906AE84789F63F72BFC64C",
+  "classMajorVersion": 52
+}

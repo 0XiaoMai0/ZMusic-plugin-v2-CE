@@ -1,0 +1,29 @@
+{
+  "version": "2.14.0-CE.5",
+  "qqQr": {
+    "imageMime": "image/png",
+    "imageBytes": 436,
+    "state": "WAIT",
+    "passed": true
+  },
+  "qqWechatQr": {
+    "imageMime": "image/jpeg",
+    "imageBytes": 47719,
+    "state": "WAIT",
+    "passed": true
+  },
+  "kuwo": {
+    "imageMime": "image/png",
+    "imageBytes": 6654,
+    "captchaReceived": true,
+    "invalidLoginRejected": true,
+    "invalidLoginMessage": "酷我验证码不正确，请重新获取并输入验证码。"
+  },
+  "qqPhoneInvalidInput": {
+    "invalidPhoneMessage": "QQ音乐拒绝发送短信，请检查手机号和国家区号是否正确。"
+  },
+  "invalidQqCredential": {
+    "rejected": true,
+    "message": "QQ音乐登录凭据已失效，请重新扫码登录。"
+  }
+}

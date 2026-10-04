@@ -1,10 +1,10 @@
 plugins {
     id 'java'
-    id 'io.papermc.paperweight.userdev' version '2.0.0-beta.17' apply false
 }
 
 allprojects {
     repositories {
+        mavenCentral()
         maven { url 'https://jitpack.io' }
         maven { url 'https://hub.spigotmc.org/nexus/content/repositories/snapshots' }
         maven { url 'https://oss.sonatype.org/content/repositories/snapshots' }
@@ -17,17 +17,14 @@ allprojects {
 }
 
 subprojects {
-    if (!project.name.startsWith('zmusic-nms-1.21.')) {
-        apply plugin: 'java'
+    apply plugin: 'java'
 
-        dependencies {
-            compileOnly libs.spigot
-            compileOnly libs.netty.buffer
-            compileOnly libs.lombok
-            annotationProcessor libs.lombok
-        }
+    dependencies {
+        compileOnly libs.spigot
+        compileOnly libs.netty.buffer
+        compileOnly libs.lombok
+        annotationProcessor libs.lombok
     }
-
     java {
         toolchain.languageVersion = JavaLanguageVersion.of(21)
         sourceCompatibility = JavaVersion.VERSION_1_8
@@ -36,5 +33,6 @@ subprojects {
 
     tasks.withType(JavaCompile).configureEach {
         options.encoding = 'UTF-8'
+        options.release = 8
     }
 }

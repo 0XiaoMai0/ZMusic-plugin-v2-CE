@@ -27,7 +27,7 @@ import java.nio.file.Path;
 @Plugin(
         id = "zmusic",
         name = "ZMusic",
-        version = "2.12.0",
+        version = "2.13.5-beta2",
         description = "A Minecraft music plugin supporting Bukkit, BungeeCord, and Velocity",
         url = "https://github.com/zhenxin/ZMusic",
         authors = {"ZhenXin"}
@@ -67,8 +67,10 @@ public class ZMusicVelocity {
         if (!ZMusic.dataFolder.exists()) {
             ZMusic.dataFolder.mkdir();
         }
+        Config.realSupportBossBar = false;
+        Config.realSupportVault = false;
         Config.debug = true;
-        ZMusic.thisVer = "2.12.0";
+        ZMusic.thisVer = "2.13.5-beta2";
         ZMusic.log.sendNormalMessage("正在加载中....");
         CookieUtils.initCookieManager();
 

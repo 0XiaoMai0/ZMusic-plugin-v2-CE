@@ -1,0 +1,11 @@
+{
+  "version": "1.12.2",
+  "connected": true,
+  "playPackets": 2,
+  "stopPackets": 6,
+  "lyricPackets": 4,
+  "actionBarMessages": 0,
+  "bossBarLyricMessages": 2,
+  "chatMessages": 4,
+  "errors": []
+}

@@ -8,280 +8,225 @@ import me.zhenxin.zmusic.config.Config;
 import me.zhenxin.zmusic.utils.CookieUtils;
 import me.zhenxin.zmusic.utils.NetUtils;
 
-import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.util.Base64;
 
+/**
+ * 网易云登录
+ *
+ * @author 真心
+ * @email qgzhenxin@qq.com
+ * @since 2023/3/21 11:17
+ *
+ */
 public class NeteaseLogin {
 
+    // 每次读取配置，避免 reload 后仍向旧 API 地址发送请求。
+    private static String api() { return Config.neteaseApiRoot; }
     private static final Gson GSON = new Gson();
 
-    private static String api() {
-        String root = Config.neteaseApiRoot;
-        if (root == null || root.isEmpty()) {
-            throw new IllegalStateException("Netease API root is not loaded.");
-        }
-        return root.endsWith("/") ? root : root + "/";
-    }
-
     public static String key() {
-        JsonObject json = parseJsonObject(NetUtils.postNetString(api() + "login/qr/key", null, "noCookie=true"));
-        JsonObject data = getObject(json, "data");
-        String key = getString(data, "unikey", "");
-        if (key.isEmpty()) {
-            throw new IllegalStateException("获取 QR key 失败，请检查网易云 API 是否可用。");
+        String result = NetUtils.postNetString(api() + "login/qr/key", null, "");
+        JsonObject json = GSON.fromJson(result, JsonObject.class);
+        if (json == null || !json.has("data") || !json.get("data").isJsonObject()) {
+            throw new IllegalStateException("获取 QR key 失败: 响应格式错误");
         }
-        return key;
+        JsonObject data = json.getAsJsonObject("data");
+        if (!data.has("unikey")) {
+            throw new IllegalStateException("获取 QR key 失败: 缺少 unikey 字段");
+        }
+        return data.get("unikey").getAsString();
     }
 
     public static String create(String key) throws UnsupportedEncodingException {
-        String params = "key=" + URLEncoder.encode(key, "UTF-8") + "&qrimg=true&noCookie=true";
-        JsonObject json = parseJsonObject(NetUtils.postNetString(api() + "login/qr/create", null, params));
-        JsonObject data = getObject(json, "data");
-        String url = getString(data, "qrurl", "");
-        if (url.isEmpty()) {
-            throw new IllegalStateException("创建二维码失败，请检查网易云 API 是否可用。");
+        String params = "key=" + key;
+        String result = NetUtils.postNetString(api() + "login/qr/create", null, params);
+        JsonObject json = GSON.fromJson(result, JsonObject.class);
+        if (json == null || !json.has("data") || !json.get("data").isJsonObject()) {
+            throw new IllegalStateException("创建二维码失败: 响应格式错误");
         }
-        String savedQr = saveQrImage(data);
-        String savedHtml = saveQrHtml(data, url);
-        String qrImageUrl = "https://api.qrserver.com/v1/create-qr-code/?size=260x260&data="
-                + URLEncoder.encode(url, "UTF-8");
-        StringBuilder builder = new StringBuilder();
-        if (!savedHtml.isEmpty()) {
-            builder.append("QR HTML file: ").append(savedHtml).append(" | ");
+        JsonObject data = json.getAsJsonObject("data");
+        if (!data.has("qrurl")) {
+            throw new IllegalStateException("创建二维码失败: 缺少 qrurl 字段");
         }
-        if (!savedQr.isEmpty()) {
-            builder.append("QR PNG file: ").append(savedQr).append(" | ");
-        }
-        builder.append("QR web image: ").append(qrImageUrl).append(" | ");
-        builder.append("Netease raw QR payload: ").append(url);
-        return builder.toString();
-    }
-
-    private static String saveQrImage(JsonObject data) {
-        try {
-            String qrimg = getString(data, "qrimg", "");
-            if (qrimg.isEmpty()) {
-                return "";
-            }
-            int split = qrimg.indexOf(',');
-            String base64 = split >= 0 ? qrimg.substring(split + 1) : qrimg;
-            byte[] image = Base64.getDecoder().decode(base64);
-            File file = new File(ZMusic.dataFolder, "netease-login-qr.png");
-            Files.write(file.toPath(), image);
-            return file.getAbsolutePath();
-        } catch (Exception e) {
-            ZMusic.log.sendDebugMessage("[NeteaseLogin] Failed to save QR image: " + e.getMessage());
-            return "";
-        }
-    }
-
-    private static String saveQrHtml(JsonObject data, String qrUrl) {
-        try {
-            String qrimg = getString(data, "qrimg", "");
-            if (qrimg.isEmpty()) {
-                return "";
-            }
-            File file = new File(ZMusic.dataFolder, "netease-login-qr.html");
-            String html = "<!doctype html><html><head><meta charset=\"utf-8\"><title>ZMusic NetEase Login</title>"
-                    + "<style>body{font-family:sans-serif;margin:32px;line-height:1.5}img{width:260px;height:260px}</style>"
-                    + "</head><body><h1>ZMusic NetEase QR Login</h1>"
-                    + "<p>Use NetEase Cloud Music app to scan this QR code.</p>"
-                    + "<img alt=\"NetEase QR\" src=\"" + escapeHtml(qrimg) + "\">"
-                    + "<p>Raw payload:</p><pre>" + escapeHtml(qrUrl) + "</pre>"
-                    + "</body></html>";
-            Files.write(file.toPath(), html.getBytes(StandardCharsets.UTF_8));
-            return file.getAbsolutePath();
-        } catch (Exception e) {
-            ZMusic.log.sendDebugMessage("[NeteaseLogin] Failed to save QR html: " + e.getMessage());
-            return "";
-        }
-    }
-
-    private static String escapeHtml(String value) {
-        if (value == null) {
-            return "";
-        }
-        return value.replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-                .replace("\"", "&quot;")
-                .replace("'", "&#39;");
+        String url = data.get("qrurl").getAsString();
+        return "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" + URLEncoder.encode(url, "UTF-8");
     }
 
     public static Integer check(String key) {
         String params = "key=" + key + "&noCookie=true";
-        JsonObject json = parseJsonObject(NetUtils.postNetString(api() + "login/qr/check", null, params));
-        int code = getInt(json, "code", -1);
-        if (code == 803) {
-            String cookie = getString(json, "cookie", "");
-            if (cookie.isEmpty()) {
-                cookie = NetUtils.getLastResponseCookie();
-            }
-            if (!cookie.isEmpty()) {
-                CookieUtils.saveCookies(cookie);
-            }
+        String result = NetUtils.postNetString(api() + "login/qr/check", null, params);
+        JsonObject json = GSON.fromJson(result, JsonObject.class);
+        if (json == null || !json.has("code")) {
+            return -1;
         }
-        return code;
+        if (json.get("code").getAsInt() == 803 && json.has("cookie")) {
+            String cookie = json.get("cookie").getAsString();
+            CookieUtils.saveCookies(cookie);
+        }
+        return json.get("code").getAsInt();
     }
 
     public static void welcome() {
-        String cookie = CookieUtils.getCookies();
-        if (cookie != null && !cookie.isEmpty() && !hasCookie(cookie, "MUSIC_U")) {
-            ZMusic.log.sendErrorMessage("网易云 Cookies 缺少 MUSIC_U，当前不会被识别为已登录。");
-            ZMusic.log.sendErrorMessage("请从浏览器 Network 请求头复制完整 Cookie，或使用 /zm login qr。");
-            return;
-        }
         String nickname = nickname();
         if (!nickname.isEmpty()) {
-            ZMusic.log.sendNormalMessage("已登录网易云音乐，昵称: " + nickname);
+            ZMusic.log.sendNormalMessage("您已登录网易云音乐, 昵称: " + nickname);
         } else {
-            ZMusic.log.sendErrorMessage("未登录网易云音乐，公开歌曲仍可尝试播放。");
-            ZMusic.log.sendErrorMessage("可使用 /zm login qr、/zm login raw 或验证码登录。");
+            ZMusic.log.sendErrorMessage("您未登录网易云音乐, 自动转为匿名登录.");
+            ZMusic.log.sendErrorMessage("匿名登录将无法获取您的个人信息, 仅能播放公开音乐.");
+            ZMusic.log.sendErrorMessage("请使用 /zm login 命令登录网易云音乐.");
         }
     }
 
-    public static boolean login_fromlink(String url) {
+    public static boolean refresh() {
+        if (!CookieUtils.hasCookie("MUSIC_U")) {
+            return false;
+        }
+
+        String result = NetUtils.postNetString(api() + "login/refresh", null, "");
+        try {
+            JsonObject json = parseJsonObject(result);
+            if (getInt(json, "code", -1) != 200) {
+                return false;
+            }
+
+            String cookie = getString(json, "cookie", null);
+            if (cookie != null && !cookie.isEmpty()) {
+                CookieUtils.saveCookies(cookie);
+            }
+            return true;
+        } catch (Exception e) {
+            ZMusic.log.sendDebugMessage("[网易云登录] 刷新登录状态失败: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public static void login_fromlink(String url) {
         String result = NetUtils.postNetString(url, null, "");
         JsonObject json = parseJsonObject(result);
         int codeResult = getInt(json, "code", -1);
         if (codeResult == 200) {
-            String cookie = getString(json, "cookie", "");
-            if (cookie.isEmpty()) {
-                cookie = NetUtils.getLastResponseCookie();
-            }
-            if (!cookie.isEmpty()) {
+            String cookie = getString(json, "cookie", null);
+            if (cookie != null && !cookie.isEmpty()) {
                 CookieUtils.saveCookies(cookie);
                 welcome();
-                return true;
+            } else {
+                ZMusic.log.sendErrorMessage("未获取到 Cookies，登录失败。");
             }
-            ZMusic.log.sendErrorMessage("登录成功但没有拿到 Cookies。");
-            return false;
+            // } else if (codeResult == 8810) {
+            // ↑ 不只是8810。没办法一个一个找出来，于是采用关键词
+        } else if (result.contains("安全风险")) {
+            ZMusic.log.sendErrorMessage(
+                    "被拿下了喵。请使用手机验证码登录，扫码登录，或者使用 raw 登录（从浏览器复制cookies）");
+        } else {
+            ZMusic.log.sendErrorMessage("登录失败: " + codeResult + "，请检查服务器控制台获得完整错误信息。");
+            throw new IllegalStateException("登录失败: " + codeResult + ", 详细信息: \n" + json);
         }
-        if (result != null && result.contains("安全风险")) {
-            ZMusic.log.sendErrorMessage("网易云提示安全风险，请改用二维码登录或 raw cookie 登录。");
-            return false;
-        }
-        ZMusic.log.sendErrorMessage("网易云登录失败，code=" + codeResult + "，message="
-                + getString(json, "message", getString(json, "msg", "未知错误")));
-        return false;
     }
 
-    public static boolean sendCode(String phone, String countrycode) {
+    // 验证码登录的流程是：
+    // 1. /captcha/sent?phone=xxx&ctcode=xxx
+    // 2. /captcha/verify?phone=xxx&ctcode=xxx&captcha=xxx
+    // 3. /login/cellphone?phone=xxx&ctcode=xxx&captcha=xxx
+
+    // step 1: send code
+    public static void sendCode(String phone, String countrycode) {
         String url = api() + "captcha/sent?phone=" + phone + "&ctcode=" + countrycode;
-        JsonObject json = parseJsonObject(NetUtils.postNetString(url, null, ""));
+        String result = NetUtils.postNetString(url, null, "");
+        JsonObject json = parseJsonObject(result);
         int code = getInt(json, "code", -1);
         if (code == 200) {
-            ZMusic.log.sendNormalMessage("验证码发送成功。");
-            return true;
+            ZMusic.log.sendNormalMessage("发送验证码成功");
+        } else {
+            ZMusic.log.sendErrorMessage("发送验证码失败: " + getString(json, "message",
+                    "未知错误"));
         }
-        ZMusic.log.sendErrorMessage("验证码发送失败: " + getString(json, "message",
-                getString(json, "msg", "接口无响应或网络超时")));
-        return false;
     }
 
-    public static boolean verify(String phone, String code, String countrycode) {
-        String urlVerify = api() + "captcha/verify?phone=" + phone + "&ctcode=" + countrycode
+    public static void verify(String phone, String code, String countrycode) {
+        // step 2: verify code
+        String url_verify = api() + "captcha/verify?phone=" + phone + "&ctcode=" + countrycode
                 + "&captcha=" + code;
-        JsonObject jsonVerify = parseJsonObject(NetUtils.postNetString(urlVerify, null, ""));
-        int codeVerify = getInt(jsonVerify, "code", -1);
-        if (codeVerify != 200) {
-            ZMusic.log.sendErrorMessage("验证码校验失败: " + getString(jsonVerify, "message",
-                    getString(jsonVerify, "data", "接口无响应或网络超时")));
-            return false;
+        String result_verify = NetUtils.postNetString(url_verify, null, "");
+        JsonObject json_verify = parseJsonObject(result_verify);
+        int code_verify = getInt(json_verify, "code", -1);
+        if (code_verify != 200) {
+            ZMusic.log.sendErrorMessage("验证码错误" + getString(json_verify, "data", "未知错误"));
+            return;
         }
+
+        // step 3: login with code
         String url = api() + "login/cellphone?phone=" + phone + "&ctcode=" + countrycode + "&captcha=" + code;
-        return login_fromlink(url);
+        login_fromlink(url);
     }
 
-    public static boolean password_phone(String phone, String password, String countrycode, boolean isMD5) {
-        String url = api() + "login/cellphone?phone=" + phone + "&ctcode=" + countrycode
-                + (isMD5 ? "&md5_password=" : "&password=") + password;
-        return login_fromlink(url);
+    public static void password_phone(String phone, String password, String countrycode, boolean isMD5) {
+        // throw new UnsupportedOperationException("暂未实现");
+        String url = api() + "login/cellphone?phone=" + phone + "&ctcode=" +
+                countrycode +
+                (isMD5 ? "&md5_password=" : "&password=") + password;
+        login_fromlink(url);
     }
 
-    public static boolean password_email(String email, String password, boolean isMD5) {
-        String url = api() + "login?email=" + email
-                + (isMD5 ? "&md5_password=" : "&password=") + password;
-        return login_fromlink(url);
+    public static void password_email(String email, String password, boolean isMD5) {
+        // throw new UnsupportedOperationException("暂未实现");
+        String url = api() + "login?email=" + email +
+                (isMD5 ? "&md5_password=" : "&password=") + password;
+        login_fromlink(url);
     }
 
     public static String nickname() {
+        JsonObject data = status();
         try {
-            JsonObject data = status();
-            JsonObject profile = getObject(data, "profile");
-            String nickname = getString(profile, "nickname", "");
-            if (!nickname.isEmpty()) {
-                return nickname;
+            JsonObject profile = data.getAsJsonObject("profile");
+            if (profile == null) {
+                return "";
             }
-            JsonObject accountInStatus = getObject(data, "account");
-            nickname = getString(accountInStatus, "userName", "");
-            if (!nickname.isEmpty()) {
-                return nickname;
+            String nickname = profile.get("nickname").getAsString();
+            if (nickname == null || nickname.isEmpty()) {
+                return "";
             }
-            JsonObject account = account();
-            return getString(getObject(account, "profile"), "nickname", "");
-        } catch (Exception ignored) {
+            return nickname;
+        } catch (Exception e) {
             return "";
         }
     }
 
-    public static JsonObject status() {
-        JsonObject root = parseJsonObject(NetUtils.postNetString(api() + "login/status", null, ""));
-        return getObject(root, "data");
-    }
-
-    private static JsonObject account() {
-        return parseJsonObject(NetUtils.postNetString(api() + "user/account", null, ""));
-    }
-
-    public static String statusSummary() {
-        String cookie = CookieUtils.getCookies();
-        boolean hasMusicU = hasCookie(cookie, "MUSIC_U");
-        JsonObject data = status();
-        int code = getInt(data, "code", -1);
-        String nickname = getString(getObject(data, "profile"), "nickname", "");
-        if (nickname.isEmpty()) {
-            JsonObject account = account();
-            nickname = getString(getObject(account, "profile"), "nickname", "");
+    private static JsonObject status() {
+        String result = NetUtils.postNetString(api() + "login/status", null, "");
+        try {
+            JsonObject root = parseJsonObject(result);
+            return getObject(root, "data");
+        } catch (Exception e) {
+            ZMusic.log.sendDebugMessage("[网易云登录] 登录状态接口返回解析失败: " + e.getMessage());
+            return new JsonObject();
         }
-        return "MUSIC_U=" + (hasMusicU ? "present" : "missing")
-                + ", login/status code=" + code
-                + ", nickname=" + (nickname.isEmpty() ? "empty" : nickname);
     }
 
     private static JsonObject parseJsonObject(String result) {
-        if (result == null || result.isEmpty()) {
-            ZMusic.log.sendErrorMessage("网易云音乐 API 无响应，请检查 config.json 的 api.netease 或服务器网络。");
-            return new JsonObject();
-        }
         try {
             JsonElement element = GSON.fromJson(result, JsonElement.class);
             if (element == null || !element.isJsonObject()) {
-                ZMusic.log.sendErrorMessage("网易云音乐 API 返回内容不是 JSON: " + result);
-                return new JsonObject();
+                throw new IllegalStateException("接口返回不是 JSON 对象");
             }
             return element.getAsJsonObject();
         } catch (Exception e) {
-            ZMusic.log.sendErrorMessage("网易云音乐 API 返回解析失败。");
-            ZMusic.log.sendDebugMessage("[NeteaseLogin] parseJsonObject failed: " + e.getMessage());
-            return new JsonObject();
+            throw new IllegalStateException("接口返回解析失败");
         }
     }
 
     private static JsonObject getObject(JsonObject parent, String key) {
-        if (parent == null || !parent.has(key) || parent.get(key) == null
-                || parent.get(key).isJsonNull() || !parent.get(key).isJsonObject()) {
+        // throw new UnsupportedOperationException("暂未实现");
+        if (parent == null || !parent.has(key) || parent.get(key) == null ||
+                !parent.get(key).isJsonObject()) {
             return new JsonObject();
         }
         return parent.getAsJsonObject(key);
     }
 
     private static String getString(JsonObject obj, String key, String defaultValue) {
-        if (obj == null || !obj.has(key) || obj.get(key) == null || obj.get(key).isJsonNull()) {
+        if (obj == null || !obj.has(key) || obj.get(key) == null ||
+                obj.get(key).isJsonNull()) {
             return defaultValue;
         }
         try {
@@ -292,7 +237,8 @@ public class NeteaseLogin {
     }
 
     private static int getInt(JsonObject obj, String key, int defaultValue) {
-        if (obj == null || !obj.has(key) || obj.get(key) == null || obj.get(key).isJsonNull()) {
+        if (obj == null || !obj.has(key) || obj.get(key) == null ||
+                obj.get(key).isJsonNull()) {
             return defaultValue;
         }
         try {
@@ -304,26 +250,21 @@ public class NeteaseLogin {
 
     public static void loginRaw(String rawCookies) {
         if (rawCookies == null || rawCookies.isEmpty()) {
-            ZMusic.log.sendErrorMessage("Cookies 不能为空。");
+            ZMusic.log.sendErrorMessage("Cookies 不能为空！");
             return;
         }
         if (!rawCookies.contains("=")) {
-            ZMusic.log.sendErrorMessage("无效的 Cookies 格式。");
+            ZMusic.log.sendErrorMessage("无效的 Cookies 格式！");
             return;
         }
         String normalized = normalizeRawCookie(rawCookies);
         if (normalized.isEmpty() || !normalized.contains("=")) {
-            ZMusic.log.sendErrorMessage("无效的 Cookies 格式。");
+            ZMusic.log.sendErrorMessage("无效的 Cookies 格式！");
             return;
         }
         try {
             CookieUtils.saveCookies(normalized);
             ZMusic.log.sendNormalMessage("Cookies 已成功保存。");
-            if (!hasCookie(normalized, "MUSIC_U")) {
-                ZMusic.log.sendErrorMessage("当前 Cookies 缺少 MUSIC_U，网易云不会识别为已登录。");
-                ZMusic.log.sendErrorMessage("请从浏览器 Network 请求头里的 Cookie 复制完整内容，而不是只用 document.cookie。");
-                return;
-            }
             welcome();
         } catch (Exception e) {
             ZMusic.log.sendErrorMessage("保存 Cookies 时发生错误: " + e.getMessage());
@@ -331,6 +272,7 @@ public class NeteaseLogin {
     }
 
     private static String normalizeRawCookie(String rawCookies) {
+        // throw new UnsupportedOperationException("暂未实现");
         String cookie = rawCookies.trim();
         if (cookie.regionMatches(true, 0, "cookie:", 0, 7)) {
             cookie = cookie.substring(7).trim();
@@ -339,17 +281,6 @@ public class NeteaseLogin {
         while (cookie.contains(";;")) {
             cookie = cookie.replace(";;", ";");
         }
-        return cookie.trim();
-    }
-
-    private static boolean hasCookie(String cookie, String key) {
-        String[] parts = cookie.split(";");
-        for (String part : parts) {
-            String item = part.trim();
-            if (item.regionMatches(true, 0, key + "=", 0, key.length() + 1)) {
-                return item.length() > key.length() + 1;
-            }
-        }
-        return false;
+        return cookie;
     }
 }

@@ -1,8 +1,8 @@
 {
   // 配置文件版本(请勿修改)
   "version": 11,
-  // 是否字段检查更新
-  "check-update": true,
+  // 社区版关闭官方更新检查；旧配置也会自动关闭。
+  "check-update": false,
   // 插件提示信息显示前缀
   "prefix": "&bZMusic &e>>> &r",
   // 是否开启调试模式
@@ -14,15 +14,23 @@
     // 使用开源项目NeteaseCloudMusicApi
     // 推荐自行部署，需Node.js环境
     // 地址: https://github.com/Binaryify/NeteaseCloudMusicApi
-    "netease": "https://ncm.zhenxin.me"
+    "netease": "direct"
   },
   // 是否关注作者的网易云音乐账号
-  "netease-follow": true,
-  // 旧版作者 VIP 字段，仅保留用于兼容旧配置，本构建不会联网验证，也无需填写
+  "netease-follow": false,
+  // B 站在游戏内播放：纯 Java 适配为 MP3，不用 FFmpeg，不保存音频文件。
+  // 公网服请把 public-url 改成玩家能访问的服务器地址，并开放该端口或使用反向代理。
+  "audio-stream": {
+    "enabled": true,
+    "bind": "0.0.0.0",
+    "port": 18081,
+    "public-url": "http://127.0.0.1:18081"
+  },
+  // ZMusic VIP 设置
   "vip": {
-    // 保留字段
-    "account": "none",
-    // 保留字段
+    // 授权账号
+    "account": "1307993674",
+    // 授权密钥
     "secret": "none"
   },
   // 点歌设置

@@ -1,0 +1,127 @@
+{
+  "version": "1.12.2",
+  "engine": "official ZMusicPlayer + 1.0.0-alpha.7 native",
+  "sources": {
+    "163": {
+      "playPackets": 1,
+      "lyricMessages": 2,
+      "stop": {
+        "source": "163",
+        "operation": "stop",
+        "state": 0
+      },
+      "play": {
+        "source": "163",
+        "operation": "play",
+        "state": 2,
+        "positionMs": 1255,
+        "durationMs": 278962,
+        "hasError": false
+      },
+      "check": {
+        "source": "163",
+        "operation": "check",
+        "state": 2,
+        "positionMs": 16415,
+        "hasError": false
+      }
+    },
+    "qq": {
+      "playPackets": 1,
+      "lyricMessages": 1,
+      "stop": {
+        "source": "qq",
+        "operation": "stop",
+        "state": 0
+      },
+      "play": {
+        "source": "qq",
+        "operation": "play",
+        "state": 2,
+        "positionMs": 1215,
+        "durationMs": 93072,
+        "hasError": false
+      },
+      "check": {
+        "source": "qq",
+        "operation": "check",
+        "state": 2,
+        "positionMs": 16250,
+        "hasError": false
+      }
+    },
+    "kuwo": {
+      "playPackets": 1,
+      "lyricMessages": 3,
+      "stop": {
+        "source": "kuwo",
+        "operation": "stop",
+        "state": 0
+      },
+      "play": {
+        "source": "kuwo",
+        "operation": "play",
+        "state": 2,
+        "positionMs": 1255,
+        "durationMs": 269871,
+        "hasError": false
+      },
+      "check": {
+        "source": "kuwo",
+        "operation": "check",
+        "state": 2,
+        "positionMs": 16360,
+        "hasError": false
+      }
+    },
+    "kugou": {
+      "playPackets": 1,
+      "lyricMessages": 3,
+      "stop": {
+        "source": "kugou",
+        "operation": "stop",
+        "state": 0
+      },
+      "play": {
+        "source": "kugou",
+        "operation": "play",
+        "state": 2,
+        "positionMs": 1235,
+        "durationMs": 218039,
+        "hasError": false
+      },
+      "check": {
+        "source": "kugou",
+        "operation": "check",
+        "state": 2,
+        "positionMs": 16320,
+        "hasError": false
+      }
+    },
+    "bilibili": {
+      "playPackets": 1,
+      "lyricMessages": 0,
+      "stop": {
+        "source": "bilibili",
+        "operation": "stop",
+        "state": 0
+      },
+      "play": {
+        "source": "bilibili",
+        "operation": "play",
+        "state": 2,
+        "positionMs": 1280,
+        "durationMs": 212376,
+        "hasError": false
+      },
+      "check": {
+        "source": "bilibili",
+        "operation": "check",
+        "state": 2,
+        "positionMs": 16410,
+        "hasError": false
+      }
+    }
+  },
+  "errors": []
+}

@@ -1,10 +1,9 @@
 package me.zhenxin.zmusic.utils.mod;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import me.zhenxin.zmusic.ZMusic;
 import me.zhenxin.zmusic.ZMusicBukkit;
 import me.zhenxin.zmusic.api.Version;
+import me.zhenxin.zmusic.utils.runtask.BukkitTaskScheduler;
 import org.bukkit.entity.Player;
 
 import java.nio.charset.StandardCharsets;
@@ -20,16 +19,13 @@ public class SendBukkit implements Send {
             return;
         try {
             byte[] bytes = data.getBytes(StandardCharsets.UTF_8);
-            ByteBuf buf = Unpooled.buffer(bytes.length + 1);
-            buf.writeByte(666);
-            buf.writeBytes(bytes);
-            byte[] payload = buf.array();
-            ZMusic.runTask.run(() -> {
-                if (!player.isOnline()) {
-                    return;
-                }
-                player.sendPluginMessage(ZMusicBukkit.plugin, "allmusic:channel", payload.clone());
-                player.sendPluginMessage(ZMusicBukkit.plugin, "zmusic:channel", payload.clone());
+            byte[] array = new byte[bytes.length + 1];
+            array[0] = (byte) 666;
+            System.arraycopy(bytes, 0, array, 1, bytes.length);
+            // 同一玩家队列内发送两个频道，保证 [Stop] 和 [Play] 的顺序。
+            BukkitTaskScheduler.run(player, () -> {
+                player.sendPluginMessage(ZMusicBukkit.plugin, "allmusic:channel", array);
+                player.sendPluginMessage(ZMusicBukkit.plugin, "zmusic:channel", array);
             });
         } catch (Exception e) {
             ZMusic.log.sendDebugMessage("[Mod通信] 数据发送发生错误");
@@ -43,12 +39,8 @@ public class SendBukkit implements Send {
             if (player == null)
                 return;
             try {
-                ZMusic.runTask.run(() -> {
-                    if (!player.isOnline()) {
-                        return;
-                    }
-                    player.sendPluginMessage(ZMusicBukkit.plugin, "AudioBuffer", data.getBytes());
-                });
+                BukkitTaskScheduler.run(player, () -> player.sendPluginMessage(ZMusicBukkit.plugin,
+                        "AudioBuffer", data.getBytes(StandardCharsets.UTF_8)));
             } catch (Exception e) {
                 ZMusic.log.sendDebugMessage("[Mod通信] 数据发送发生错误");
             }

@@ -1,6 +1,7 @@
 package me.zhenxin.zmusic.api.bossbar;
 
-import me.zhenxin.zmusic.ZMusic;
+import me.zhenxin.zmusic.utils.runtask.BukkitTaskScheduler;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import java.util.List;
@@ -9,38 +10,51 @@ import java.util.List;
 public class BossBarBukkit implements BossBar {
 
     private final Player p;
-    private final String title;
+    private volatile String title;
     private final double seconds;
-    private final org.bukkit.boss.BossBar bar;
+    private final BarColor color;
+    private final BarStyle style;
+    private org.bukkit.boss.BossBar bar;
+    private Runnable cancelProgressTask;
 
     public BossBarBukkit(Object p, String title, BarColor color, BarStyle style, float seconds) {
         Player player = (Player) p;
-        this.bar = org.bukkit.Bukkit.getServer().createBossBar(title, org.bukkit.boss.BarColor.valueOf(color.name()), org.bukkit.boss.BarStyle.valueOf(style.name()));
         this.p = player;
         this.title = title;
+        this.color = color;
+        this.style = style;
         this.seconds = seconds;
     }
 
     @Override
     public void showTitle() {
+        BukkitTaskScheduler.run(p, this::showTitleSync);
+    }
+
+    private void showTitleSync() {
+        if (bar == null) {
+            bar = Bukkit.createBossBar(title, org.bukkit.boss.BarColor.valueOf(color.name()),
+                    org.bukkit.boss.BarStyle.valueOf(style.name()));
+        }
         bar.setVisible(true);
         bar.setProgress(0);
         bar.addPlayer(p);
-        ZMusic.runTask.runAsync(() -> {
-            double step = 1F / seconds;
-            double prog = bar.getProgress();
-            while (prog >= 0 || prog <= 1) {
-                prog += step;
-                if (prog > 1) break;
-                bar.setProgress(prog);
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+        Runnable tick = () -> {
+            if (!bar.isVisible()) {
+                cancelTask();
+                return;
             }
-            bar.setVisible(false);
-        });
+            double step = 1F / seconds;
+            double prog = Math.min(bar.getProgress() + step, 1.0);
+            if (prog >= 1.0) {
+                bar.setProgress(1.0);
+                bar.setVisible(false);
+                cancelTask();
+                return;
+            }
+            bar.setProgress(prog);
+        };
+        cancelProgressTask = BukkitTaskScheduler.runAtFixedRate(p, tick, 20L, 20L);
     }
 
     @Override
@@ -50,28 +64,57 @@ public class BossBarBukkit implements BossBar {
 
     @Override
     public void setTitle(String title) {
-        bar.setTitle(title);
+        this.title = title;
+        BukkitTaskScheduler.run(p, () -> {
+            if (bar != null) {
+                bar.setTitle(title);
+            }
+        });
     }
 
     @Override
     public void removePlayer(Object player) {
         Player p = (Player) player;
-        bar.removePlayer(p);
+        BukkitTaskScheduler.run(p, () -> {
+            if (bar != null) {
+                bar.removePlayer(p);
+            }
+            cancelTask();
+        });
     }
 
     @Override
     public void removeAll() {
-        bar.removeAll();
+        BukkitTaskScheduler.run(p, () -> {
+            if (bar != null) {
+                bar.removeAll();
+            }
+            cancelTask();
+        });
     }
 
     @Override
     public boolean isVisible() {
-        return bar.isVisible();
+        return bar != null && bar.isVisible();
     }
 
     @Override
     public void setVisible(boolean visible) {
-        bar.setVisible(visible);
+        BukkitTaskScheduler.run(p, () -> {
+            if (bar != null) {
+                bar.setVisible(visible);
+            }
+            if (!visible) {
+                cancelTask();
+            }
+        });
+    }
+
+    private void cancelTask() {
+        if (cancelProgressTask != null) {
+            cancelProgressTask.run();
+            cancelProgressTask = null;
+        }
     }
 
     @Override
@@ -101,7 +144,11 @@ public class BossBarBukkit implements BossBar {
 
     @Override
     public void setProgress(double progress) {
-        bar.setProgress(progress);
+        BukkitTaskScheduler.run(p, () -> {
+            if (bar != null) {
+                bar.setProgress(progress);
+            }
+        });
     }
 
     @Override
@@ -116,6 +163,11 @@ public class BossBarBukkit implements BossBar {
 
     @Override
     public void addPlayer(Object playerObj) {
-        bar.addPlayer((Player) playerObj);
+        Player player = (Player) playerObj;
+        BukkitTaskScheduler.run(player, () -> {
+            if (bar != null) {
+                bar.addPlayer(player);
+            }
+        });
     }
 }

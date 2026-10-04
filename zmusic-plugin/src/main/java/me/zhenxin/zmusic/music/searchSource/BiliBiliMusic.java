@@ -5,8 +5,15 @@ import me.zhenxin.zmusic.ZMusic;
 import me.zhenxin.zmusic.config.Config;
 import me.zhenxin.zmusic.utils.NetUtils;
 import me.zhenxin.zmusic.utils.OtherUtils;
+import me.zhenxin.zmusic.audio.ModAudioServer;
+import me.zhenxin.zmusic.language.MusicErrorMessages;
 
 import java.net.URLEncoder;
+import java.io.IOException;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -19,7 +26,6 @@ public class BiliBiliMusic {
     private static final String REFERER = "https://search.bilibili.com/";
     private static final String BILIBILI_ORIGIN = "https://www.bilibili.com";
     private static final String BILIBILI_USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 ZMusic/";
-    private static final int CONVERT_READ_TIMEOUT = 600000;
     private static final int[] WBI_MIXIN_KEY_ENC_TAB = {
         46, 47, 18, 2, 53, 8, 23, 32,
         15, 50, 10, 31, 58, 3, 45, 35,
@@ -56,12 +62,13 @@ public class BiliBiliMusic {
             String musicSinger = view.get("owner").getAsJsonObject().get("name").getAsString();
             int musicTime = view.get("duration").getAsInt();
             long cid = view.get("cid").getAsLong();
-            String musicUrl = getAudioUrl(bvid, cid, gson);
-            if (musicUrl == null || musicUrl.isEmpty()) {
-                return null;
+            List<String> audios = getAudioUrls(bvid, cid, gson);
+            String musicUrl = "";
+            String failure = "B 站未返回独立 DASH 音频流，视频可能受登录、地区或版权限制。";
+            for (String audio : audios) {
+                try { musicUrl = ModAudioServer.prepare(bvid, audio); break; }
+                catch (IOException error) { failure = MusicErrorMessages.requestFailure(error, "B 站音频处理失败，请稍后重试或选择其他视频。"); }
             }
-
-            musicUrl = convertToMp3(bvid, musicUrl, gson);
 
             JsonObject returnJSON = new JsonObject();
             returnJSON.addProperty("id", bvid);
@@ -71,10 +78,10 @@ public class BiliBiliMusic {
             returnJSON.addProperty("singer", musicSinger);
             returnJSON.addProperty("lyric", "");
             returnJSON.addProperty("lyricTr", "");
-            returnJSON.addProperty("error", "");
+            returnJSON.addProperty("error", musicUrl.isEmpty() ? failure : "");
             return returnJSON;
         } catch (Exception e) {
-            e.printStackTrace();
+            if (me.zhenxin.zmusic.ZMusic.log != null) me.zhenxin.zmusic.ZMusic.log.sendDebugMessage("音乐源请求失败: " + e.getClass().getSimpleName());
             return null;
         }
     }
@@ -102,7 +109,7 @@ public class BiliBiliMusic {
             }
             return returnJSON;
         } catch (Exception e) {
-            e.printStackTrace();
+            if (me.zhenxin.zmusic.ZMusic.log != null) me.zhenxin.zmusic.ZMusic.log.sendDebugMessage("音乐源请求失败: " + e.getClass().getSimpleName());
             return null;
         }
     }
@@ -135,7 +142,7 @@ public class BiliBiliMusic {
             }
             return searchJson;
         } catch (Exception e) {
-            e.printStackTrace();
+            if (me.zhenxin.zmusic.ZMusic.log != null) me.zhenxin.zmusic.ZMusic.log.sendDebugMessage("音乐源请求失败: " + e.getClass().getSimpleName());
             return null;
         }
     }
@@ -149,70 +156,59 @@ public class BiliBiliMusic {
             }
             return viewJson.get("data").getAsJsonObject();
         } catch (Exception e) {
-            e.printStackTrace();
+            if (me.zhenxin.zmusic.ZMusic.log != null) me.zhenxin.zmusic.ZMusic.log.sendDebugMessage("音乐源请求失败: " + e.getClass().getSimpleName());
             return null;
         }
     }
 
-    private static String getAudioUrl(String bvid, long cid, Gson gson) {
+    private static List<String> getAudioUrls(String bvid, long cid, Gson gson) {
+        List<String> candidates = new ArrayList<>();
         try {
             String url = PLAY_URL_API +
                 "?bvid=" + URLEncoder.encode(bvid, "UTF-8") +
                 "&cid=" + cid +
-                "&fnval=16&fourk=1";
+                "&fnver=0&fnval=4048&qn=32&fourk=1";
             String playJsonText = NetUtils.getNetStringBiliBiliWeb(url, "https://www.bilibili.com/video/" + bvid);
             JsonObject playJson = gson.fromJson(playJsonText, JsonObject.class);
             if (playJson == null || playJson.get("code").getAsInt() != 0) {
-                return null;
+                return candidates;
             }
 
             JsonObject data = playJson.get("data").getAsJsonObject();
             if (data.has("dash") && data.get("dash").getAsJsonObject().has("audio")) {
                 JsonArray audios = data.get("dash").getAsJsonObject().get("audio").getAsJsonArray();
-                if (audios.size() > 0) {
-                    return audios.get(0).getAsJsonObject().get("baseUrl").getAsString();
+                JsonObject selected = null;
+                // 优先标准 AAC-LC，避免低码率 HE-AAC 的兼容性和额外解码开销。
+                for (JsonElement audio : audios) {
+                    JsonObject item = audio.getAsJsonObject();
+                    if (item.get("id").getAsInt() == 30232) { selected = item; break; }
+                }
+                for (JsonElement audio : audios) {
+                    if (selected != null) break;
+                    JsonObject item = audio.getAsJsonObject();
+                    if (item.has("codecs") && item.get("codecs").getAsString().startsWith("mp4a.40.2")) selected = item;
+                }
+                if (selected == null && audios.size() > 0) selected = audios.get(0).getAsJsonObject();
+                if (selected != null) {
+                    candidates.add(selected.get("baseUrl").getAsString());
+                    if (selected.has("backupUrl") && selected.get("backupUrl").isJsonArray()) {
+                        for (JsonElement backup : selected.getAsJsonArray("backupUrl")) candidates.add(backup.getAsString());
+                    }
                 }
             }
-
-            if (data.has("durl")) {
-                JsonArray durl = data.get("durl").getAsJsonArray();
-                if (durl.size() > 0) {
-                    return durl.get(0).getAsJsonObject().get("url").getAsString();
-                }
-            }
-            return null;
+            // 优先官方 HTTPS CDN，家庭节点的非标准端口常被服务器防火墙阻断。
+            candidates.removeIf(candidate -> !ModAudioServer.allowedMediaUrl(candidate));
+            candidates.sort(Comparator.comparingInt(candidate -> URI.create(candidate).getPort() == -1 ? 0 : 1));
+            // durl 可能是视频流，不能当成独立音频返回。
+            return candidates;
         } catch (Exception e) {
-            e.printStackTrace();
-            return null;
+            if (me.zhenxin.zmusic.ZMusic.log != null) me.zhenxin.zmusic.ZMusic.log.sendDebugMessage("音乐源请求失败: " + e.getClass().getSimpleName());
+            return candidates;
         }
-    }
-
-    private static String convertToMp3(String bvid, String musicUrl, Gson gson) throws Exception {
-        JsonObject data = new JsonObject();
-        data.addProperty("account", Config.vipAccount);
-        data.addProperty("secret", Config.vipSecret);
-        data.addProperty("id", "bilibili_video_" + bvid);
-        data.addProperty("url", musicUrl);
-        data.addProperty("referer", BILIBILI_ORIGIN + "/video/" + bvid);
-        data.addProperty("origin", BILIBILI_ORIGIN);
-        data.addProperty("userAgent", BILIBILI_USER_AGENT + ZMusic.thisVer);
-        String res = NetUtils.postNetString("https://api.zhenxin.me/zmusic/vip/m4a2mp3", null, data, CONVERT_READ_TIMEOUT);
-        if (res == null || res.isEmpty()) {
-            throw new Exception("视频音频转MP3失败: 转换服务无响应");
-        }
-        JsonObject resJson = gson.fromJson(res, JsonObject.class);
-        if (resJson == null || !resJson.has("code")) {
-            throw new Exception("视频音频转MP3失败: 转换服务响应异常");
-        }
-        if (resJson.get("code").getAsInt() == 200) {
-            JsonObject dataJson = resJson.get("data").getAsJsonObject();
-            String name = dataJson.get("name").getAsString();
-            return "https://api.zhenxin.me/zmusic/vip/download/" + name;
-        }
-        throw new Exception("视频音频转MP3失败");
     }
 
     private static String buildWbiQuery(Map<String, String> params, Gson gson) throws Exception {
+        params.replaceAll((key, value) -> value.replaceAll("[!'()*]", ""));
         WbiKeys keys = getWbiKeys(gson);
         String mixinKey = getMixinKey(keys.imgKey + keys.subKey);
         params.put("wts", String.valueOf(System.currentTimeMillis() / 1000));

@@ -1,91 +1,17 @@
 package me.zhenxin.zmusic.proto;
-
 import me.zhenxin.zmusic.ZMusicAddon;
-import me.zhenxin.zmusic.proto.packet.AdvancementPacket;
-import me.zhenxin.zmusic.proto.packet.impl.*;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
-
-import java.lang.reflect.Constructor;
-
-/**
- * 吐司工具
- *
- * @author 真心
- * @since 2022/6/8 14:15
- */
-public class Toast {
-
+/** 代理服 Addon 使用公开 Title API，不依赖服务端内部类。 */
+public final class Toast {
     public static void sendToast(Object player, String title) {
-        try {
-            String packageName = ZMusicAddon.plugin.getServer().getClass().getPackage().getName();
-            String nms = packageName.substring(packageName.lastIndexOf('.') + 1);
-            Player bukkitPlayer = (Player) player;
-            AdvancementPacket packet;
-            switch (nms) {
-                case "v1_20_R1":
-                    packet = new AdvancementPacket_1_20_R1(bukkitPlayer, title);
-                    break;
-                case "v1_19_R3":
-                    packet = new AdvancementPacket_1_19_R3(bukkitPlayer, title);
-                    break;
-                case "v1_19_R2":
-                    packet = new AdvancementPacket_1_19_R2(bukkitPlayer, title);
-                    break;
-                case "v1_19_R1":
-                    packet = new AdvancementPacket_1_19_R1(bukkitPlayer, title);
-                    break;
-                case "v1_18_R2":
-                    packet = new AdvancementPacket_1_18_R2(bukkitPlayer, title);
-                    break;
-                case "v1_18_R1":
-                    packet = new AdvancementPacket_1_18_R1(bukkitPlayer, title);
-                    break;
-                case "v1_17_R1":
-                    packet = new AdvancementPacket_1_17_R1(bukkitPlayer, title);
-                    break;
-                case "v1_16_R3":
-                    packet = new AdvancementPacket_1_16_R3(bukkitPlayer, title);
-                    break;
-                case "v1_16_R2":
-                    packet = new AdvancementPacket_1_16_R2(bukkitPlayer, title);
-                    break;
-                case "v1_16_R1":
-                    packet = new AdvancementPacket_1_16_R1(bukkitPlayer, title);
-                    break;
-                case "v1_15_R1":
-                    packet = new AdvancementPacket_1_15_R1(bukkitPlayer, title);
-                    break;
-                case "v1_14_R1":
-                    packet = new AdvancementPacket_1_14_R1(bukkitPlayer, title);
-                    break;
-                case "v1_13_R2":
-                    packet = new AdvancementPacket_1_13_R2(bukkitPlayer, title);
-                    break;
-                case "v1_12_R1":
-                    packet = new AdvancementPacket_1_12_R1(bukkitPlayer, title);
-                    break;
-                case "craftbukkit": // Mojang mappings server for paper 1.20.5+
-                    String version;
-                    if (Bukkit.getUnsafe().getDataVersion() >= 4435) {
-                        version = "1_21_7";
-                    } else {
-                        version = "1_21_4";
-                    }
-                    Class<?> clazz = Class.forName("me.zhenxin.zmusic.proto.packet.impl.paper.AdvancementPacket_" + version);
-                    Constructor<?> constructor = clazz.getConstructor(Player.class, String.class);
-                    packet = (AdvancementPacket) constructor.newInstance(bukkitPlayer, title);
-                    break;
-                default:
-                    ZMusicAddon.plugin.getLogger().warning(ChatColor.RED + "不支持的NMS版本: " + nms);
-                    return;
+        Player target = (Player) player;
+        ZMusicAddon.plugin.getServer().getScheduler().runTask(ZMusicAddon.plugin, () -> {
+            String[] lines = title.split("\n", 2);
+            try {
+                target.sendTitle(lines[0], lines.length > 1 ? lines[1] : "", 0, 60, 10);
+            } catch (NoSuchMethodError ignored) {
+                target.sendTitle(lines[0], lines.length > 1 ? lines[1] : "");
             }
-
-            packet.grant();
-            packet.revoke();
-        } catch (Throwable ignored) {
-
-        }
+        });
     }
 }

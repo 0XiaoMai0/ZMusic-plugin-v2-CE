@@ -1,0 +1,121 @@
+{
+  "version": "2.14.0-CE.4",
+  "tests": 54.0,
+  "failures": 0.0,
+  "errors": 0.0,
+  "skipped": 1.0,
+  "suites": [
+    {
+      "suite": "me.zhenxin.zmusic.addon.PApiHookTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "me.zhenxin.zmusic.api.VersionTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "me.zhenxin.zmusic.audio.ModAudioServerTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "me.zhenxin.zmusic.command.CommandCompletionTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "me.zhenxin.zmusic.command.CompletionContextTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "me.zhenxin.zmusic.language.MusicErrorMessagesTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "me.zhenxin.zmusic.login.NeteaseLoginTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "me.zhenxin.zmusic.music.LiveSourceTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    {
+      "suite": "me.zhenxin.zmusic.music.LyricParserTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "me.zhenxin.zmusic.music.PlayListTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "me.zhenxin.zmusic.music.searchSource.KugouMusicTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "me.zhenxin.zmusic.music.searchSource.KuwoLyricsTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "me.zhenxin.zmusic.notice.NoticeReadStoreTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "me.zhenxin.zmusic.notice.NoticeServiceTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "me.zhenxin.zmusic.utils.CookieUtilsTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "me.zhenxin.zmusic.utils.WebMusicUtilsTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ]
+}

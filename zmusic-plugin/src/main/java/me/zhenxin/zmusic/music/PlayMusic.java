@@ -9,11 +9,12 @@ import me.zhenxin.zmusic.component.ZTextComponent;
 import me.zhenxin.zmusic.config.Config;
 import me.zhenxin.zmusic.data.PlayerData;
 import me.zhenxin.zmusic.language.Lang;
+import me.zhenxin.zmusic.language.MusicErrorMessages;
 import me.zhenxin.zmusic.music.searchSource.BiliBiliMusic;
-import me.zhenxin.zmusic.music.searchSource.KugouMusic;
 import me.zhenxin.zmusic.music.searchSource.KuwoMusic;
-import me.zhenxin.zmusic.music.searchSource.NeteaseCloudMusic;
 import me.zhenxin.zmusic.music.searchSource.QQMusic;
+import me.zhenxin.zmusic.music.searchSource.KugouMusic;
+import me.zhenxin.zmusic.music.searchSource.NeteaseCloudMusic;
 import me.zhenxin.zmusic.utils.OtherUtils;
 
 import java.util.ArrayList;
@@ -21,31 +22,22 @@ import java.util.List;
 
 public class PlayMusic {
 
-    static String[] errMsg;
-    static String musicID;
-    static String musicName;
-    static String musicSinger;
-    static String musicFullName;
-    static String musicUrl;
-    static JsonObject musicLyric;
-    static long musicMaxTime;
-    static String searchSourceName;
-    static JsonObject json;
-
-
     /**
      * 播放音乐
      *
      * @param searchKey 搜索词
-     * @param source    搜索源 [qq(QQ音乐)163|netease(网易云音乐)kugou(酷狗音乐))
+     * @param source    搜索源 [163|netease(网易云音乐)kuwo(酷我音乐)bilibili(哔哩哔哩))
      * @param player    玩家
      * @param type      类型 [all(全体),self(个人)music(点歌)
      * @param players   玩家列表 [类型为all传入，非all可传入null]
      */
     public static void play(String searchKey, String source, Object player, String type, List<Object> players) {
+        source = source.toLowerCase(java.util.Locale.ROOT);
         try {
             long time = System.currentTimeMillis();
             ZMusic.message.sendNormalMessage(Lang.searching, player);
+            JsonObject json;
+            String searchSourceName;
             switch (source) {
                 case "163":
                 case "netease":
@@ -56,40 +48,39 @@ public class PlayMusic {
                     json = KuwoMusic.getMusicUrl(searchKey);
                     searchSourceName = "酷我音乐";
                     break;
-                case "kugou":
-                    json = KugouMusic.getMusicUrl(searchKey);
-                    searchSourceName = "Kugou Music";
-                    break;
                 case "qq":
                     json = QQMusic.getMusicUrl(searchKey);
-                    searchSourceName = "QQ Music";
+                    searchSourceName = "QQ音乐";
+                    break;
+                case "kugou":
+                    json = KugouMusic.getMusicUrl(searchKey);
+                    searchSourceName = "酷狗音乐";
                     break;
                 case "bilibili":
-                    if (ZMusic.isVip) {
-                        ZMusic.message.sendNormalMessage("哔哩哔哩视频音频需要在插件服务器将M4A转换为MP3。", player);
-                        ZMusic.message.sendNormalMessage("第一次搜索将会耗时很久，如有其他用户使用过，将会返回缓存文件。", player);
-                        ZMusic.message.sendNormalMessage("请耐心等待。。。。", player);
+                    if (me.zhenxin.zmusic.audio.ModAudioServer.available()) {
                         json = BiliBiliMusic.getMusic(searchKey);
                         searchSourceName = "哔哩哔哩视频";
                         break;
                     } else {
-                        ZMusic.message.sendErrorMessage("错误,本服务器未授权.", player);
+                        ZMusic.message.sendErrorMessage("B 站音频适配未启动，请检查 audio-stream 配置和监听端口。", player);
                         return;
                     }
-                case "qq-disabled":
-                    ZMusic.message.sendErrorMessage("由于不可抗力因素。", player);
-                    ZMusic.message.sendErrorMessage("QQ音乐搜索源已于2.5.0版本移除, API服务已关闭。", player);
-                    return;
                 default:
                     ZMusic.message.sendErrorMessage("错误：未知的搜索源", player);
                     return;
             }
             boolean supportId = source.equalsIgnoreCase("163") ||
                 source.equalsIgnoreCase("netease") ||
-                source.equalsIgnoreCase("qq") ||
-                source.equalsIgnoreCase("kugou") ||
-                source.equalsIgnoreCase("kuwo") ||
+                source.equalsIgnoreCase("qq") || source.equalsIgnoreCase("kugou") || source.equalsIgnoreCase("kuwo") ||
                 source.equalsIgnoreCase("bilibili");
+            String musicID = null;
+            String musicName;
+            String musicSinger;
+            String musicFullName;
+            String musicUrl;
+            JsonObject musicLyric;
+            long musicMaxTime;
+            String[] errMsg;
             if (json != null) {
                 if (supportId) {
                     musicID = json.get("id").getAsString();
@@ -97,32 +88,36 @@ public class PlayMusic {
                 musicName = json.get("name").getAsString();
                 musicSinger = json.get("singer").getAsString();
                 musicFullName = musicName + " - " + musicSinger;
-                musicUrl = json.get("url").getAsString();
-                if (musicUrl == null || musicUrl.trim().isEmpty()) {
-                    if (json.has("error") && !json.get("error").getAsString().isEmpty()) {
-                        for (String msg : json.get("error").getAsString().split("\n")) {
-                            if (!msg.isEmpty()) {
-                                ZMusic.message.sendErrorMessage(msg, player);
-                            }
-                        }
-                    }
-                    ZMusic.message.sendPlayError(player, searchKey);
+                musicUrl = json.has("url") && !json.get("url").isJsonNull() ? json.get("url").getAsString() : "";
+                if (musicUrl.trim().isEmpty()) {
+                    String error = json.has("error") ? json.get("error").getAsString() : "";
+                    ZMusic.message.sendErrorMessage(MusicErrorMessages.remoteMessage(error, "音乐源未提供播放地址，请选择其他歌曲或联系管理员检查账号权限。"), player);
                     return;
+                }
+                {
+                    String probe = me.zhenxin.zmusic.utils.WebMusicUtils.probeAudio(musicUrl, null, null);
+                    if (!probe.startsWith("OK:")) {
+                        ZMusic.message.sendErrorMessage("音乐播放失败：" + MusicErrorMessages.audioStatus(probe) + "。", player);
+                        return;
+                    }
                 }
                 musicLyric = OtherUtils.formatLyric(json.get("lyric").getAsString(), json.get("lyricTr").getAsString());
                 musicMaxTime = json.get("time").getAsInt();
+                if (musicMaxTime <= 0) musicMaxTime = 3600;
                 errMsg = json.get("error").getAsString().split("\n");
             } else {
                 ZMusic.message.sendPlayError(player, searchKey);
                 return;
             }
+            MusicData musicData = new MusicData(errMsg, musicName, musicSinger, musicFullName,
+                musicUrl, musicLyric, musicMaxTime, searchSourceName);
             switch (type) {
                 case "all":
                     play(null, players, Lang.playAllSource
-                        .replaceAll("%player%", ZMusic.player.getName(player)), time);
+                        .replaceAll("%player%", ZMusic.player.getName(player)), time, musicData);
                     break;
                 case "self":
-                    play(player, new ArrayList<>(), "搜索", time);
+                    play(player, new ArrayList<>(), "搜索", time, musicData);
                     break;
                 case "music":
                     String s = Lang.musicMessage;
@@ -153,44 +148,46 @@ public class PlayMusic {
         }
     }
 
-    private static void play(Object player, List<Object> players, String src, long time) {
+    private static void play(Object player, List<Object> players, String src, long time, MusicData musicData) {
         if (player != null) {
             players.add(player);
         }
         for (Object p : players) {
-            OtherUtils.resetPlayerStatus(p);
-            PlayListPlayer plp = PlayerData.getPlayerPlayListPlayer(p);
-            if (plp != null) {
-                plp.isStop = true;
-                PlayerData.setPlayerPlayListPlayer(p, null);
+            LyricSender nextLyricSender = new LyricSender();
+            nextLyricSender.player = p;
+            nextLyricSender.lyric = musicData.lyric;
+            nextLyricSender.maxTime = musicData.maxTime;
+            nextLyricSender.name = musicData.name;
+            nextLyricSender.singer = musicData.singer;
+            nextLyricSender.fullName = musicData.fullName;
+            nextLyricSender.platform = musicData.sourceName;
+            nextLyricSender.src = src;
+            nextLyricSender.url = musicData.url;
+            synchronized (p) {
+                PlayListPlayer plp = PlayerData.getPlayerPlayListPlayer(p);
+                if (plp != null) {
+                    plp.isStop = true;
+                    PlayerData.setPlayerPlayListPlayer(p, null);
+                }
+                LyricSender previousLyricSender = PlayerData.getPlayerLyricSender(p);
+                PlayerData.setPlayerLyricSender(p, nextLyricSender);
+                if (previousLyricSender != null) {
+                    previousLyricSender.stopThis();
+                }
+                OtherUtils.resetPlayerStatus(p);
+                nextLyricSender.init();
+                ZMusic.runTask.runAsync(nextLyricSender);
+                ZMusic.music.play(musicData.url, p);
             }
-            LyricSender lyricSender = PlayerData.getPlayerLyricSender(p);
-            if (lyricSender != null) {
-                lyricSender.stopThis();
-            }
-            lyricSender = new LyricSender();
-            PlayerData.setPlayerLyricSender(p, lyricSender);
-            lyricSender.player = p;
-            lyricSender.lyric = musicLyric;
-            lyricSender.maxTime = musicMaxTime <= 0 ? 3600 : musicMaxTime;
-            lyricSender.name = musicName;
-            lyricSender.singer = musicSinger;
-            lyricSender.fullName = musicFullName;
-            lyricSender.platform = searchSourceName;
-            lyricSender.src = src;
-            lyricSender.url = musicUrl;
-            lyricSender.init();
-            ZMusic.runTask.runAsync(lyricSender);
-            for (String msg : errMsg) {
+            for (String msg : musicData.errorMessages) {
                 if (!msg.isEmpty()) {
-                    ZMusic.message.sendErrorMessage(msg, p);
+                    ZMusic.message.sendErrorMessage(MusicErrorMessages.remoteMessage(msg, "音乐源返回异常提示，请联系管理员检查账号权限。"), p);
                 }
             }
-            ZMusic.music.play(musicUrl, p);
             time = System.currentTimeMillis() - time;
             ZComponent success = ZTextComponent.of(Config.prefix + "§a" + Lang.playSuccess
-                .replaceAll("%source%", searchSourceName)
-                .replaceAll("%fullName%", musicFullName)
+                .replaceAll("%source%", musicData.sourceName)
+                .replaceAll("%fullName%", musicData.fullName)
                 .replaceAll("%time%", String.valueOf(time)));
             ZComponent stop = ZTextComponent.of("§r[§e" + Lang.clickStop + "§r]");
             stop.setClickEvent(ZClickEvent.runCommand("/zm stop"));
@@ -199,9 +196,32 @@ public class PlayMusic {
             loop.setClickEvent(ZClickEvent.runCommand("/zm loop"));
             success.addChild(loop);
             ZMusic.message.sendJsonMessage(success, p);
-            String title = "§a" + Lang.playing + "\n§e" + musicFullName;
+            String title = "§a" + Lang.playing + "\n§e" + musicData.fullName;
             OtherUtils.sendAdv(p, title);
         }
     }
 
+    private static final class MusicData {
+
+        private final String[] errorMessages;
+        private final String name;
+        private final String singer;
+        private final String fullName;
+        private final String url;
+        private final JsonObject lyric;
+        private final long maxTime;
+        private final String sourceName;
+
+        private MusicData(String[] errorMessages, String name, String singer, String fullName,
+                          String url, JsonObject lyric, long maxTime, String sourceName) {
+            this.errorMessages = errorMessages;
+            this.name = name;
+            this.singer = singer;
+            this.fullName = fullName;
+            this.url = url;
+            this.lyric = lyric;
+            this.maxTime = maxTime;
+            this.sourceName = sourceName;
+        }
+    }
 }

@@ -5,18 +5,45 @@ import me.zhenxin.zmusic.ZMusic;
 import java.io.File;
 import java.io.IOException;
 import java.util.Locale;
+import java.nio.file.Files;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.charset.StandardCharsets;
 
 public class ServiceCookieUtils {
 
     private ServiceCookieUtils() {
     }
 
-    public static void saveCookies(String service, String rawCookies) {
-        String cookie = normalizeRawCookie(rawCookies);
+    /** 创建空凭据文件供管理员填写，不覆盖已经保存的账号。 */
+    public static void initializeFiles() {
         try {
-            OtherUtils.saveStringToLocal(getCookieFile(service), cookie);
+            Files.createDirectories(ZMusic.dataFolder.toPath());
+            for (String service : new String[]{"qq", "kugou", "kuwo", "bilibili"}) {
+                try { Files.createFile(getCookieFile(service).toPath()); }
+                catch (FileAlreadyExistsException ignored) {
+                    if (!Files.isRegularFile(getCookieFile(service).toPath())) throw new IOException("凭据文件路径不是普通文件。");
+                }
+            }
+        } catch (IOException error) { throw new IllegalStateException("无法创建音乐平台凭据文件，请检查配置目录权限。", error); }
+    }
+
+    public static synchronized void saveCookies(String service, String rawCookies) {
+        String cookie = normalizeRawCookie(rawCookies);
+        Path pending = null;
+        try {
+            Path destination = getCookieFile(service).toPath();
+            Files.createDirectories(destination.getParent());
+            pending = Files.createTempFile(destination.getParent(), ".zmusic-login-", ".tmp");
+            Files.write(pending, cookie.getBytes(StandardCharsets.UTF_8));
+            try { Files.move(pending, destination, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
+            catch (AtomicMoveNotSupportedException ignored) { Files.move(pending, destination, StandardCopyOption.REPLACE_EXISTING); }
         } catch (IOException e) {
-            ZMusic.log.sendDebugMessage("[ServiceCookieUtils] Failed to save " + service + " cookies: " + e.getMessage());
+            throw new IllegalStateException("无法保存平台登录凭据，请检查配置目录权限。", e);
+        } finally {
+            if (pending != null) try { Files.deleteIfExists(pending); } catch (IOException ignored) { }
         }
     }
 

@@ -1,0 +1,1 @@
+{"method":"GetSession then SendPhoneAuthCode","anonymousSessionCode":0,"phoneInput":"invalid non-phone string","sendCode":104400,"smsSent":false,"invalidInputRejected":true}

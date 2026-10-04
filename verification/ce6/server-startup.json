@@ -1,0 +1,17 @@
+{
+  "version": "2.14.0-CE.6",
+  "server": "Purpur 26.2-2633",
+  "loaded": true,
+  "done": true,
+  "startupErrors": 0,
+  "legacyCheckUpdateBefore": true,
+  "legacyCheckUpdateAfter": false,
+  "migrationLogged": true,
+  "officialVersionEndpointRemoved": true,
+  "officialUpdateCallsRemoved": true,
+  "installedJarMatchesBuild": true,
+  "jarSha256": "CAF613457B964027311E65F72CED2411810F16D98CF1DDC4D0D7197B90F353D2",
+  "kugouCredentialsPreserved": true,
+  "visibleConsole": true,
+  "address": "127.0.0.1:25576"
+}

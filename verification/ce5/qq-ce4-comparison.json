@@ -1,0 +1,55 @@
+[
+  {
+    "keyword": "晴天",
+    "searchCount": 10,
+    "selected": {
+      "id": "0039MnYb0qxYhV,003Qui1q2u1Zho",
+      "songMid": "0039MnYb0qxYhV",
+      "mediaMid": "003Qui1q2u1Zho",
+      "name": "晴天",
+      "singer": "周杰伦",
+      "time": 269
+    },
+    "formats": [
+      {
+        "format": "M800",
+        "hasUrl": false
+      },
+      {
+        "format": "M500",
+        "hasUrl": false
+      }
+    ],
+    "title": "晴天",
+    "error": "QQ音乐播放失败：音乐源拒绝访问（状态码：403），请检查账号权限或选择其他歌曲。",
+    "playable": false
+  },
+  {
+    "keyword": "宝宝巴士",
+    "searchCount": 10,
+    "selected": {
+      "id": "0044E5zr2WbiY2,004HSdZp0zCb2K",
+      "songMid": "0044E5zr2WbiY2",
+      "mediaMid": "004HSdZp0zCb2K",
+      "name": "我会自己上厕所 (节目)",
+      "singer": "宝宝巴士",
+      "time": 109
+    },
+    "formats": [
+      {
+        "format": "M800",
+        "hasUrl": false
+      },
+      {
+        "format": "M500",
+        "hasUrl": true,
+        "host": "aqqmusic.tc.qq.com",
+        "audio": "OK:MP3",
+        "withReferer": "OK:MP3"
+      }
+    ],
+    "title": "我会自己上厕所 (节目)",
+    "error": "",
+    "playable": true
+  }
+]

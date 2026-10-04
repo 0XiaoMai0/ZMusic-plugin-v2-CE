@@ -14,6 +14,11 @@ public class Config {
     public static boolean checkUpdate;
     // Api
     public static String neteaseApiRoot;
+    // 游戏模组获取适配后的 MP3，客户端无需打开网页。
+    public static boolean audioEnabled = true;
+    public static String audioBind = "0.0.0.0";
+    public static int audioPort = 18081;
+    public static String audioPublicUrl = "http://127.0.0.1:18081";
     // NeteaseFollow
     public static boolean neteaseFollow;
     // VIP

@@ -1,0 +1,24 @@
+ZMusic CE 保留官方作者信息与 GPL-3.0 许可证。
+
+内置第三方库：
+Google Gson 2.11.0 — Apache-2.0
+https://github.com/google/gson
+
+JAAD 0.9.4 (com.tianscar.javasound:jaad) — Apache-2.0
+AAC 解码与 MP4 元数据读取；作者包括 JAAD 项目贡献者与 Karstian Lee。
+https://github.com/Tianscar/jaadec
+
+jump3r 1.0.5 — LGPL-2.1-or-later
+LAME 的 Java 实现；作者包括 L.A.M.E. project、Ken Händel、Vadym Vikulin、Hanns Holger Rutz。
+https://git.iem.at/sciss/jump3r
+
+源码包 third-party/sources 提供 JAAD、jump3r 的对应源码。
+原始库没有修改；Gradle Shadow 重定位类包以避免与其他插件冲突。
+对应许可证文本随 Jar 放置于 META-INF/licenses。
+
+QQ 原生登录协议流程参考：
+L-1124/QQMusicApi — GPL-3.0，作者 Luren 及项目贡献者。
+https://github.com/L-1124/QQMusicApi
+参考提交 ba95861ee9391f5b5f60f89caa8d4de4af160c8b 的 login.py、android_session.py。
+ZMusic CE 使用独立 Java 实现；未将 Python 运行库或外部 API 服务打包进插件。
+对应 Java 实现以 ZMusic CE 的 GPL-3.0 许可证提供完整源码。

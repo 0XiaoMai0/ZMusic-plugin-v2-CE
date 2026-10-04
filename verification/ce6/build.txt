@@ -1,0 +1,66 @@
+Picked up JAVA_TOOL_OPTIONS: -Djavax.net.ssl.trustStoreType=Windows-ROOT -Djavax.net.ssl.trustStore=NONE -Djava.io.tmpdir=C:\Users\Administrator\.codex\tmp -Djdk.net.unixdomain.tmpdir=C:\Users\Administrator\.codex\tmp
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.4.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build
+> Task :compileJava NO-SOURCE
+> Task :processResources NO-SOURCE
+> Task :classes UP-TO-DATE
+> Task :jar UP-TO-DATE
+> Task :assemble UP-TO-DATE
+> Task :compileTestJava NO-SOURCE
+> Task :processTestResources NO-SOURCE
+> Task :testClasses UP-TO-DATE
+> Task :test NO-SOURCE
+> Task :check UP-TO-DATE
+> Task :build UP-TO-DATE
+> Task :zmusic-addon:compileJava UP-TO-DATE
+> Task :zmusic-addon:processResources UP-TO-DATE
+> Task :zmusic-addon:classes UP-TO-DATE
+> Task :zmusic-addon:jar UP-TO-DATE
+> Task :zmusic-addon:shadowJar UP-TO-DATE
+> Task :zmusic-addon:assemble UP-TO-DATE
+> Task :zmusic-addon:compileTestJava NO-SOURCE
+> Task :zmusic-addon:processTestResources NO-SOURCE
+> Task :zmusic-addon:testClasses UP-TO-DATE
+> Task :zmusic-addon:test NO-SOURCE
+> Task :zmusic-addon:check UP-TO-DATE
+> Task :zmusic-addon:build UP-TO-DATE
+
+> Task :zmusic-plugin:compileJava
+警告: [options] 源值 8 已过时，将在未来发行版中删除
+警告: [options] 目标值 8 已过时，将在未来发行版中删除
+警告: [options] 要隐藏有关已过时选项的警告, 请使用 -Xlint:-options。
+注: E:\Zhang\ZMusic-CE-Build\zmusic-plugin\src\main\java\me\zhenxin\zmusic\utils\message\MessageBukkit.java使用或覆盖了已过时的 API。
+注: 有关详细信息, 请使用 -Xlint:deprecation 重新编译。
+3 个警告
+
+> Task :zmusic-plugin:processResources
+> Task :zmusic-plugin:classes
+> Task :zmusic-plugin:jar
+> Task :zmusic-plugin:shadowJar
+> Task :zmusic-plugin:assemble
+
+> Task :zmusic-plugin:compileTestJava
+警告: [options] 源值 8 已过时，将在未来发行版中删除
+警告: [options] 目标值 8 已过时，将在未来发行版中删除
+警告: [options] 要隐藏有关已过时选项的警告, 请使用 -Xlint:-options。
+3 个警告
+
+> Task :zmusic-plugin:processTestResources NO-SOURCE
+> Task :zmusic-plugin:testClasses
+
+> Task :zmusic-plugin:test
+Picked up JAVA_TOOL_OPTIONS: -Djavax.net.ssl.trustStoreType=Windows-ROOT -Djavax.net.ssl.trustStore=NONE -Djava.io.tmpdir=C:\Users\Administrator\.codex\tmp -Djdk.net.unixdomain.tmpdir=C:\Users\Administrator\.codex\tmp
+
+> Task :zmusic-plugin:check
+> Task :zmusic-plugin:build
+
+[Incubating] Problems report is available at: file:///E:/Zhang/ZMusic-CE-Build/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.4.0/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 24s
+11 actionable tasks: 6 executed, 5 up-to-date

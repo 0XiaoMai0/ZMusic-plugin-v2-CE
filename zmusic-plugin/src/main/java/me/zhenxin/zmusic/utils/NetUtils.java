@@ -9,21 +9,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
-import java.net.URLEncoder;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
 
 public class NetUtils {
-
-    private static final ThreadLocal<String> LAST_RESPONSE_COOKIE = new ThreadLocal<>();
-
-    public static String getLastResponseCookie() {
-        String cookie = LAST_RESPONSE_COOKIE.get();
-        return cookie == null ? "" : cookie;
-    }
 
     /**
      * 获取网络文件返回文本
@@ -32,7 +25,7 @@ public class NetUtils {
      * @return 获取的文本
      */
     public static String getNetStringBiliBiliGZip(String url, String Referer) {
-        ZMusic.log.sendDebugMessage(url);
+        ZMusic.log.sendDebugMessage("[NetUtils] 请求网络接口");
         try {
             URL getUrl = new URL(url);
             HttpURLConnection con = (HttpURLConnection) getUrl.openConnection();
@@ -59,7 +52,7 @@ public class NetUtils {
                 return s;
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            ZMusic.log.sendDebugMessage("[NetUtils] 请求失败: " + e.getClass().getSimpleName());
             return null;
         }
     }
@@ -71,23 +64,21 @@ public class NetUtils {
      * @return 获取的文本
      */
     public static String getNetStringBiliBili(String url, String Referer) {
-        ZMusic.log.sendDebugMessage(url);
+        ZMusic.log.sendDebugMessage("[NetUtils] 请求网络接口");
         try {
             String ua = "ZMusic/" + ZMusic.thisVer + " (service@iqianye.cn)";
             return getString(url, Referer, ua);
         } catch (Exception e) {
-            e.printStackTrace();
+            ZMusic.log.sendDebugMessage("[NetUtils] 请求失败: " + e.getClass().getSimpleName());
             return null;
         }
     }
 
     public static String getNetStringBiliBiliWeb(String url, String Referer) {
-        ZMusic.log.sendDebugMessage(url);
         try {
-            String ua = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 ZMusic/" + ZMusic.thisVer;
-            return getString(url, Referer, ua);
+            return WebMusicUtils.get(url, Referer, ServiceCookieUtils.getCookies("bilibili"));
         } catch (Exception e) {
-            e.printStackTrace();
+            ZMusic.log.sendDebugMessage("[NetUtils] 请求失败: " + e.getClass().getSimpleName());
             return null;
         }
     }
@@ -99,12 +90,12 @@ public class NetUtils {
      * @return 获取的文本
      */
     public static String getNetString(String url, String Referer) {
-        ZMusic.log.sendDebugMessage(url);
+        ZMusic.log.sendDebugMessage("[NetUtils] 请求网络接口");
         try {
             String ua = "Mozilla/5.0 (Linux; Android 11; Mi 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.99 Mobile Safari/537.36 ZMusic/" + ZMusic.thisVer;
             return getString(url, Referer, ua);
         } catch (Exception e) {
-            e.printStackTrace();
+            ZMusic.log.sendDebugMessage("[NetUtils] 请求失败: " + e.getClass().getSimpleName());
             return null;
         }
     }
@@ -116,11 +107,12 @@ public class NetUtils {
      * @return 获取的文本
      */
     public static String postNetString(String url, String Referer, String content) {
+        if (url.startsWith("direct/")) {
+            return me.zhenxin.zmusic.music.searchSource.DirectNeteaseApi.request(url.substring(7), content);
+        }
         try {
             String ua = "Mozilla/5.0 (Linux; Android 11; Mi 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.99 Mobile Safari/537.36 ZMusic/" + ZMusic.thisVer;
-            if (content == null) {
-                content = "";
-            }
+            boolean neteaseRequest = Config.neteaseApiRoot != null && url.startsWith(Config.neteaseApiRoot);
 
             if (!url.contains("?")) {
                 url = url + "?timestamp=" + System.currentTimeMillis();
@@ -128,21 +120,12 @@ public class NetUtils {
                 url = url + "&timestamp=" + System.currentTimeMillis();
             }
 
-            ZMusic.log.sendDebugMessage(url);
-            ZMusic.log.sendDebugMessage(content);
+            ZMusic.log.sendDebugMessage("[NetUtils] 请求网络接口");
+            // 请求体可能包含密码和 Cookie，不写入日志。
 
-            String neteaseCookie = "";
-            boolean noCookieRequest = content.contains("noCookie=true");
-            if (!noCookieRequest && url.contains(Config.neteaseApiRoot)) {
+            if (neteaseRequest) {
                 ZMusic.log.sendDebugMessage("[NetUtils] 发送网易云音乐API请求，附加Cookie");
-                String cookie = CookieUtils.getCookies();
-                if (cookie != null && !cookie.isEmpty()) {
-                    neteaseCookie = cookie;
-                    String encodedCookie = URLEncoder.encode(cookie, "UTF-8");
-                    content = content == null || content.isEmpty()
-                        ? "cookie=" + encodedCookie
-                        : content + "&cookie=" + encodedCookie;
-                }
+                content = appendFormParameter(content, "cookie", CookieUtils.getCookies());
             }
 
             URL getUrl = new URL(url);
@@ -152,9 +135,6 @@ public class NetUtils {
             con.addRequestProperty("Charset", "UTF-8");
             con.addRequestProperty("Referer", Referer);
             con.addRequestProperty("User-Agent", ua);
-            if (!neteaseCookie.isEmpty()) {
-                con.setRequestProperty("Cookie", neteaseCookie);
-            }
             con.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
             con.setRequestMethod("POST");
             con.setDoOutput(true);
@@ -163,15 +143,26 @@ public class NetUtils {
             //DataOutputStream流
             DataOutputStream out = new DataOutputStream(con.getOutputStream());
             //将要上传的内容写入流中
-            out.writeBytes(content);
+            out.write(content.getBytes(StandardCharsets.UTF_8));
             //刷新、关闭
             out.flush();
             out.close();
-            return getString(con);
+            return getString(con, neteaseRequest);
         } catch (Exception e) {
-            e.printStackTrace();
+            ZMusic.log.sendDebugMessage("[NetUtils] 请求失败: " + e.getClass().getSimpleName());
             return null;
         }
+    }
+
+    static String appendFormParameter(String content, String name, String value) throws IOException {
+        StringBuilder result = new StringBuilder(content == null ? "" : content);
+        if (result.length() > 0) {
+            result.append('&');
+        }
+        result.append(URLEncoder.encode(name, "UTF-8"));
+        result.append('=');
+        result.append(URLEncoder.encode(value == null ? "" : value, "UTF-8"));
+        return result.toString();
     }
 
     public static String postNetString(String url, String Referer, JsonObject data) {
@@ -188,7 +179,7 @@ public class NetUtils {
                 url = url + "&timestamp=" + System.currentTimeMillis();
             }
 
-            ZMusic.log.sendDebugMessage(url);
+            ZMusic.log.sendDebugMessage("[NetUtils] 请求网络接口");
 
             URL getUrl = new URL(url);
             HttpURLConnection con = (HttpURLConnection) getUrl.openConnection();
@@ -211,7 +202,7 @@ public class NetUtils {
             out.close();
             return getString(con);
         } catch (Exception e) {
-            e.printStackTrace();
+            ZMusic.log.sendDebugMessage("[NetUtils] 请求失败: " + e.getClass().getSimpleName());
             return null;
         }
     }
@@ -230,51 +221,47 @@ public class NetUtils {
     }
 
     private static String getString(HttpURLConnection con) throws IOException {
-        LAST_RESPONSE_COOKIE.set(readSetCookie(con));
+        return getString(con, false);
+    }
+
+    private static String getString(HttpURLConnection con, boolean persistResponseCookies) throws IOException {
         int code = con.getResponseCode();
+        if (persistResponseCookies) {
+            persistResponseCookies(con);
+        }
         if (code == 200 || code == 201 || code == 202) {
             InputStream is = con.getInputStream();
             String s = OtherUtils.readInputStream(is);
             is.close();
-            ZMusic.log.sendDebugMessage(s);
+            ZMusic.log.sendDebugMessage("[NetUtils] HTTP " + code);
             return s;
         } else {
             InputStream is = con.getErrorStream();
             String s = OtherUtils.readInputStream(is);
             is.close();
-            ZMusic.log.sendDebugMessage(s);
+            ZMusic.log.sendDebugMessage("[NetUtils] HTTP " + code);
             return s;
         }
     }
 
-    private static String readSetCookie(HttpURLConnection con) {
-        try {
-            Map<String, List<String>> headers = con.getHeaderFields();
-            if (headers == null || headers.isEmpty()) {
-                return "";
+    private static void persistResponseCookies(HttpURLConnection con) {
+        StringBuilder cookies = new StringBuilder();
+        for (Map.Entry<String, List<String>> header : con.getHeaderFields().entrySet()) {
+            if (header.getKey() == null || !"Set-Cookie".equalsIgnoreCase(header.getKey())) {
+                continue;
             }
-            StringBuilder cookie = new StringBuilder();
-            for (Map.Entry<String, List<String>> entry : headers.entrySet()) {
-                if (entry.getKey() == null || !"Set-Cookie".equalsIgnoreCase(entry.getKey()) || entry.getValue() == null) {
+            for (String cookie : header.getValue()) {
+                if (cookie == null || cookie.isEmpty()) {
                     continue;
                 }
-                for (String value : entry.getValue()) {
-                    if (value == null || value.isEmpty()) {
-                        continue;
-                    }
-                    String first = value.split(";", 2)[0].trim();
-                    if (first.isEmpty() || !first.contains("=")) {
-                        continue;
-                    }
-                    if (cookie.length() > 0) {
-                        cookie.append("; ");
-                    }
-                    cookie.append(first);
+                if (cookies.length() > 0) {
+                    cookies.append("; ");
                 }
+                cookies.append(cookie);
             }
-            return cookie.toString();
-        } catch (Exception ignored) {
-            return "";
+        }
+        if (cookies.length() > 0) {
+            CookieUtils.saveCookies(cookies.toString());
         }
     }
 
